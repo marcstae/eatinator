@@ -184,6 +184,33 @@
             border: 1px solid rgba(84, 84, 88, 0.4);
         }
         
+        /* Voting buttons */
+        .vote-button {
+            background: rgba(58, 58, 60, 0.6);
+            color: #AEAEB2;
+            border: 1px solid rgba(84, 84, 88, 0.4);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .vote-button:hover {
+            background: rgba(84, 84, 88, 0.6);
+            color: #FFFFFF;
+        }
+        
+        .vote-button-selected {
+            background: rgba(0, 122, 255, 0.8);
+            color: #FFFFFF;
+            border: 1px solid rgba(0, 122, 255, 1);
+        }
+        
+        .vote-button-disabled {
+            background: rgba(58, 58, 60, 0.3);
+            color: #636366;
+            border: 1px solid rgba(84, 84, 88, 0.2);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
         /* Status bar safe area */
         .safe-top {
             padding-top: env(safe-area-inset-top);
@@ -274,6 +301,85 @@
         let currentWeek = Math.ceil(((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 + 1) / 7);
         let currentYear = new Date().getFullYear();
         let menuData = null;
+
+        // Voting system
+        const VOTE_TYPES = {
+            GOOD: 'good',
+            NEUTRAL: 'neutral',
+            BAD: 'bad'
+        };
+
+        const VOTE_EMOJIS = {
+            [VOTE_TYPES.GOOD]: '😊',
+            [VOTE_TYPES.NEUTRAL]: '😐',
+            [VOTE_TYPES.BAD]: '😞'
+        };
+
+        // Check if voting is currently active (only for current day and current meal time)
+        function isVotingActive() {
+            const today = new Date().toISOString().split('T')[0];
+            const currentMealCategory = getDefaultMealCategory();
+            
+            // Voting is only active when viewing today's menu for the current meal period
+            return currentDate === today && currentCategory === currentMealCategory;
+        }
+
+        // Generate a unique key for menu item voting
+        function getVoteKey(dishName, menuType, date, category) {
+            return `vote_${date}_${category}_${dishName.replace(/[^a-zA-Z0-9]/g, '_')}_${menuType}`;
+        }
+
+        // Get votes for a specific menu item
+        function getVotes(voteKey) {
+            const votes = localStorage.getItem(voteKey);
+            return votes ? JSON.parse(votes) : {
+                [VOTE_TYPES.GOOD]: 0,
+                [VOTE_TYPES.NEUTRAL]: 0,
+                [VOTE_TYPES.BAD]: 0
+            };
+        }
+
+        // Cast a vote for a menu item
+        function castVote(dishName, menuType, voteType) {
+            if (!isVotingActive()) {
+                return false; // Voting not active
+            }
+
+            const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
+            const userVoteKey = `user_${voteKey}`;
+            
+            // Check if user has already voted
+            const existingVote = localStorage.getItem(userVoteKey);
+            if (existingVote) {
+                return false; // User has already voted
+            }
+
+            // Get current votes
+            const votes = getVotes(voteKey);
+            
+            // Increment the selected vote type
+            votes[voteType]++;
+            
+            // Save updated votes and user's vote
+            localStorage.setItem(voteKey, JSON.stringify(votes));
+            localStorage.setItem(userVoteKey, voteType);
+            
+            return true;
+        }
+
+        // Check if user has voted for a specific item
+        function hasUserVoted(dishName, menuType) {
+            const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
+            const userVoteKey = `user_${voteKey}`;
+            return localStorage.getItem(userVoteKey) !== null;
+        }
+
+        // Get user's vote for a specific item
+        function getUserVote(dishName, menuType) {
+            const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
+            const userVoteKey = `user_${voteKey}`;
+            return localStorage.getItem(userVoteKey);
+        }
 
         // Get default meal category based on current time
         function getDefaultMealCategory() {
@@ -594,6 +700,61 @@
             });
         }
 
+        // Generate voting HTML for a menu item
+        function generateVotingHtml(dishName, menuType) {
+            if (!isVotingActive()) {
+                return ''; // No voting UI if voting is not active
+            }
+
+            const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
+            const votes = getVotes(voteKey);
+            const userVote = getUserVote(dishName, menuType);
+            const hasVoted = hasUserVoted(dishName, menuType);
+
+            const voteButtons = Object.values(VOTE_TYPES).map(voteType => {
+                const emoji = VOTE_EMOJIS[voteType];
+                const count = votes[voteType];
+                const isUserVote = userVote === voteType;
+                const buttonClass = hasVoted 
+                    ? (isUserVote ? 'vote-button-selected' : 'vote-button-disabled') 
+                    : 'vote-button';
+                
+                return `
+                    <button class="${buttonClass} swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                            onclick="handleVote('${dishName.replace(/'/g, "\\'")}', '${menuType}', '${voteType}')"
+                            ${hasVoted ? 'disabled' : ''}>
+                        <span class="text-lg">${emoji}</span>
+                        <span class="text-sm font-medium">${count}</span>
+                    </button>
+                `;
+            }).join('');
+
+            return `
+                <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-ios-gray-2 text-sm font-medium">Rate this meal:</span>
+                        <div class="flex gap-2">
+                            ${voteButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle vote button click
+        function handleVote(dishName, menuType, voteType) {
+            const success = castVote(dishName, menuType, voteType);
+            if (success) {
+                // Refresh the menu display to show updated votes
+                if (menuData) {
+                    displayMenu(menuData);
+                }
+            } else {
+                // Show feedback if voting failed
+                console.log('Voting failed - either not active or already voted');
+            }
+        }
+
         // Create HTML for a menu item
         function createMenuItemHtml(item) {
             const menulineLabel = item.Menuline?.MenulineLabel1 ? 
@@ -651,8 +812,11 @@
             const dietaryHtml = dietaryInfo.length > 0 ? 
                 dietaryInfo.map(info => `<span class="${info.colorClass} text-xs px-2 py-1 rounded-full mr-2">${info.label}</span>`).join('') : '';
 
+            // Generate voting HTML if voting is active
+            const votingHtml = generateVotingHtml(dishName, menulineLabel);
+
             return `
-                <div class="swiftui-card p-4 rounded-xl swiftui-button" onclick="showItemDetails('${dishName}', '${menulineLabel}')">
+                <div class="swiftui-card p-4 rounded-xl ${votingHtml ? '' : 'swiftui-button'}" ${votingHtml ? '' : `onclick="showItemDetails('${dishName}', '${menulineLabel}')"`}>
                     <div class="flex justify-between items-start mb-2">
                         <h3 class="font-semibold text-white flex-1 pr-3 text-lg leading-tight">${dishName}</h3>
                         ${priceHtml}
@@ -661,6 +825,7 @@
                         ${menuTypeBadge}
                         ${dietaryHtml}
                     </div>
+                    ${votingHtml}
                 </div>
             `;
         }
