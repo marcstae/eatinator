@@ -315,6 +315,15 @@
             [VOTE_TYPES.BAD]: '🤮'
         };
 
+        // Server-side voting configuration
+        const VOTING_CONFIG = {
+            // Simple voting API endpoint that can be deployed alongside the static site
+            // This can be a simple PHP script, Node.js endpoint, or serverless function
+            apiUrl: '/api/votes.php', // Default to local API endpoint
+            enabled: true, // Can be disabled to fall back to localStorage only
+            timeout: 5000 // 5 second timeout for API calls
+        };
+
         // Check if voting is currently active (only for current day and current meal time)
         function isVotingActive() {
             const today = new Date().toISOString().split('T')[0];
@@ -339,14 +348,107 @@
             };
         }
 
+        // Server-side voting functions
+        async function getServerVotes(voteKey) {
+            if (!VOTING_CONFIG.enabled) {
+                return null;
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), VOTING_CONFIG.timeout);
+
+                const response = await fetch(`${VOTING_CONFIG.apiUrl}?action=get&key=${encodeURIComponent(voteKey)}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.success ? data.votes : null;
+                }
+            } catch (error) {
+                console.log('Server vote fetch failed:', error.message);
+            }
+            return null;
+        }
+
+        async function submitServerVote(voteKey, voteType, userId) {
+            if (!VOTING_CONFIG.enabled) {
+                return false;
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), VOTING_CONFIG.timeout);
+
+                const response = await fetch(VOTING_CONFIG.apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'vote',
+                        key: voteKey,
+                        voteType: voteType,
+                        userId: userId
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.success;
+                }
+            } catch (error) {
+                console.log('Server vote submission failed:', error.message);
+            }
+            return false;
+        }
+
+        // Get combined votes (server + local fallback)
+        async function getCombinedVotes(voteKey) {
+            // Try to get server votes first
+            const serverVotes = await getServerVotes(voteKey);
+            
+            if (serverVotes) {
+                // Store server votes in localStorage for caching
+                localStorage.setItem(`server_${voteKey}`, JSON.stringify(serverVotes));
+                return serverVotes;
+            }
+
+            // Fallback to cached server votes or local votes
+            const cachedServerVotes = localStorage.getItem(`server_${voteKey}`);
+            if (cachedServerVotes) {
+                return JSON.parse(cachedServerVotes);
+            }
+
+            // Final fallback to local votes only
+            return getVotes(voteKey);
+        }
+
+        // Generate a unique user ID for vote tracking
+        function getUserId() {
+            let userId = localStorage.getItem('voting_user_id');
+            if (!userId) {
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('voting_user_id', userId);
+            }
+            return userId;
+        }
+
         // Cast a vote for a menu item
-        function castVote(dishName, menuType, voteType) {
+        async function castVote(dishName, menuType, voteType) {
             if (!isVotingActive()) {
                 return false; // Voting not active
             }
 
             const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
             const userVoteKey = `user_${voteKey}`;
+            const userId = getUserId();
             
             // Check if user has already voted
             const existingVote = localStorage.getItem(userVoteKey);
@@ -354,17 +456,31 @@
                 return false; // User has already voted
             }
 
-            // Get current votes
-            const votes = getVotes(voteKey);
+            // Try to submit vote to server first
+            const serverSuccess = await submitServerVote(voteKey, voteType, userId);
             
-            // Increment the selected vote type
-            votes[voteType]++;
-            
-            // Save updated votes and user's vote
-            localStorage.setItem(voteKey, JSON.stringify(votes));
-            localStorage.setItem(userVoteKey, voteType);
-            
-            return true;
+            if (serverSuccess) {
+                // Server vote successful - save user vote locally to prevent re-voting
+                localStorage.setItem(userVoteKey, voteType);
+                // Clear cached server votes to force refresh
+                localStorage.removeItem(`server_${voteKey}`);
+                return true;
+            } else {
+                // Server vote failed - fall back to local voting
+                console.log('Server voting failed, using local storage fallback');
+                
+                // Get current local votes
+                const votes = getVotes(voteKey);
+                
+                // Increment the selected vote type
+                votes[voteType]++;
+                
+                // Save updated votes and user's vote locally
+                localStorage.setItem(voteKey, JSON.stringify(votes));
+                localStorage.setItem(userVoteKey, voteType);
+                
+                return true;
+            }
         }
 
         // Check if user has voted for a specific item
@@ -666,6 +782,9 @@
             const menuHtml = filteredItems.map(item => createMenuItemHtml(item)).join('');
             menuContainer.innerHTML = menuHtml;
             menuContainer.classList.add('slide-up');
+            
+            // Load server-side vote counts after rendering the menu
+            setTimeout(() => refreshVoteCounts(), 100);
         }
 
         // Filter menu items by date and category
@@ -707,6 +826,7 @@
             }
 
             const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
+            // Use local votes initially, will be updated by loadVotesForItem
             const votes = getVotes(voteKey);
             const userVote = getUserVote(dishName, menuType);
             const hasVoted = hasUserVoted(dishName, menuType);
@@ -724,13 +844,13 @@
                             onclick="handleVote('${dishName.replace(/'/g, "\\'")}', '${menuType}', '${voteType}')"
                             ${hasVoted ? 'disabled' : ''}>
                         <span class="text-lg">${emoji}</span>
-                        <span class="text-sm font-medium">${count}</span>
+                        <span class="text-sm font-medium vote-count" data-vote-type="${voteType}">${count}</span>
                     </button>
                 `;
             }).join('');
 
             return `
-                <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3">
+                <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-vote-key="${voteKey}">
                     <div class="flex justify-between items-center">
                         <span class="text-ios-gray-2 text-sm font-medium">Rate this meal:</span>
                         <div class="flex gap-2">
@@ -741,13 +861,49 @@
             `;
         }
 
+        // Load server votes for a specific item and update the display
+        async function loadVotesForItem(voteKey) {
+            const combinedVotes = await getCombinedVotes(voteKey);
+            
+            // Find the voting container for this item
+            const votingContainer = document.querySelector(`[data-vote-key="${voteKey}"]`);
+            if (votingContainer) {
+                // Update vote counts in the UI
+                Object.entries(combinedVotes).forEach(([voteType, count]) => {
+                    const countElement = votingContainer.querySelector(`[data-vote-type="${voteType}"]`);
+                    if (countElement) {
+                        countElement.textContent = count;
+                    }
+                });
+            }
+        }
+
+        // Load all visible vote counts from server
+        async function refreshVoteCounts() {
+            if (!isVotingActive()) return;
+            
+            const votingContainers = document.querySelectorAll('[data-vote-key]');
+            const loadPromises = Array.from(votingContainers).map(container => {
+                const voteKey = container.getAttribute('data-vote-key');
+                return loadVotesForItem(voteKey);
+            });
+            
+            // Load all votes in parallel
+            await Promise.all(loadPromises);
+        }
+
         // Handle vote button click
-        function handleVote(dishName, menuType, voteType) {
-            const success = castVote(dishName, menuType, voteType);
+        async function handleVote(dishName, menuType, voteType) {
+            const success = await castVote(dishName, menuType, voteType);
             if (success) {
-                // Refresh the menu display to show updated votes
+                // Refresh vote counts to show updated votes from server
+                await refreshVoteCounts();
+                
+                // Also refresh the menu display to update vote button states
                 if (menuData) {
                     displayMenu(menuData);
+                    // Refresh vote counts again after re-rendering
+                    setTimeout(() => refreshVoteCounts(), 100);
                 }
             } else {
                 // Show feedback if voting failed
