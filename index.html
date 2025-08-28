@@ -792,11 +792,8 @@
             const targetDateStr = targetDate;
             const dateFilteredItems = items.filter(item => {
                 if (!item.MenuDate1) return false;
-                // The API returns dates like "2025-07-20T22:00:00.000Z" which is actually the next day
-                // We need to parse this correctly
+                // Parse the date from the API response and extract the date part
                 const itemDate = new Date(item.MenuDate1);
-                // Add one day to get the actual menu date
-                itemDate.setDate(itemDate.getDate() + 1);
                 const itemDateStr = itemDate.toISOString().split('T')[0];
                 return itemDateStr === targetDateStr;
             });
