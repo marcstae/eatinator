@@ -389,9 +389,9 @@
             const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
             
             // Time thresholds in minutes
-            const breakfastEnd = 7 * 60 + 15; // 7:15
-            const lunchEnd = 13 * 60; // 13:00
-            const dinnerEnd = 19 * 60; // 19:00
+            const breakfastEnd = 7 * 60; // 7:00
+            const lunchEnd = 16 * 60 + 30; // 16:30
+            const dinnerEnd = 23 * 60 + 59; // 23:59
             
             if (currentTime <= breakfastEnd) {
                 return 'breakfast';
@@ -400,7 +400,7 @@
             } else if (currentTime <= dinnerEnd) {
                 return 'dinner';
             } else {
-                // After dinner time, show next day's breakfast
+                // This should never happen since dinner goes until 23:59
                 return 'breakfast';
             }
         }
