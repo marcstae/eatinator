@@ -1,8 +1,54 @@
-# Server-side Voting Setup (Dockerized nginx + PHP-FPM)
-This directory contains the server-side voting API for the Eatinator app.
+# Server-side API Setup (Dockerized nginx + PHP-FPM)
+This directory contains the server-side APIs for the Eatinator app, including voting and image upload features.
 
-Votes are stored on disk in `www/api/votes_data/` as JSON files.
-You have two ways to run the API:
+## Features
+
+- **Voting System**: Rate menu items with persistent vote storage
+- **Image Upload**: Share photos of dishes with 24-hour retention
+- **Security**: Multiple validation layers and automatic cleanup
+- **Docker Support**: Containerized nginx +## Troubleshooting
+
+### Common Issues
+
+*   **400 "plain HTTP request was sent to HTTPS port"**
+    *   Use `https://…` for your TLS listener (e.g., `curl -k https://127.0.0.1:7743/...`) or hit the HTTP port.
+
+*   **Blank response from API endpoints**
+    *   `nginx` might be serving `.php` as static. Ensure the `location ~ ^/api/.*\.php$` block exists and `fastcgi_pass` points to `lunchinator-php:9000`.
+
+*   **Voting: `{"success":false,"error":"Failed to save votes"}`**
+    *   Permissions issue with votes_data. Run `chown -R 33:33 www/api/votes_data && chmod -R 775 …` on the host.
+
+*   **Image Upload: "Failed to save image" or 413 errors**
+    *   Check `client_max_body_size` in nginx config (should be >5MB)
+    *   Verify `upload_max_filesize` and `post_max_size` in PHP config
+    *   Ensure images_data directory has write permissions: `chown -R 33:33 www/api/images_data`
+
+*   **Images not being cleaned up**
+    *   Verify cron job is running and calling the cleanup endpoint
+    *   Check server logs for cleanup errors
+    *   Manually test: `curl "http://localhost:7780/api/images.php"`
+
+*   **502 Bad Gateway**
+    *   `nginx` cannot reach `php-fpm`. Check that:
+      - Both containers are running
+      - Both are on the `lunchinet` network
+      - `fastcgi_pass` is set to `lunchinator-php:9000`
+
+### File Permissions Quick Fix
+```bash
+cd ~/nginx/lunchinator/www/api
+sudo chown -R 33:33 votes_data images_data
+sudo chmod -R 775 votes_data images_data
+```p
+
+## Data Storage
+
+- **Votes**: Stored in `www/api/votes_data/` as JSON files
+- **Images**: Stored in `www/api/images_data/` with automatic 24-hour cleanup
+- **File-based**: No database required, simple JSON storage
+
+You have two ways to run the APIs:
 
 *   **Option A (recommended & implemented below):** `nginx` container + external `php-fpm` container
 *   **Option B:** standalone PHP (shared hosting) or Node.js microservice (optional)
@@ -23,19 +69,31 @@ You have two ways to run the API:
     ├── manifest.json
     ├── icons/...
     └── api/
-        ├── votes.php      # PHP API (used in production)
-        ├── votes.js       # Node.js API (alternative)
-        └── votes_data/    # JSON storage (auto-created)
+        ├── votes.php      # Voting API
+        ├── images.php     # Image upload API
+        ├── votes_data/    # Vote storage (auto-created)
+        ├── images_data/   # Image storage (auto-created)
+        └── votes.js       # Node.js API (alternative)
 ```
 
 ### Frontend configuration
-In `www/index.html`:
+In your JavaScript config files:
 
 ```javascript
+// Voting configuration
 const VOTING_CONFIG = {
   apiUrl: '/api/votes.php',
   enabled: true,
   timeout: 5000
+};
+
+// Image upload configuration
+const IMAGE_CONFIG = {
+  apiUrl: '/api/images.php',
+  enabled: true,
+  maxSize: 5 * 1024 * 1024,        // 5MB max file size
+  allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  timeout: 10000
 };
 ```
 
@@ -120,8 +178,8 @@ server {
         fastcgi_pass lunchinator-php:9000;
         fastcgi_index index.php;
 
-        # Small requests (votes API is tiny)
-        client_max_body_size 1m;
+        # Small requests for votes, larger for image uploads
+        client_max_body_size 6m;
 
         # No cache for dynamic responses
         add_header Cache-Control "no-store" always;
@@ -179,7 +237,7 @@ server {
         fastcgi_pass lunchinator-php:9000;
         fastcgi_index index.php;
 
-        client_max_body_size 1m;
+        client_max_body_size 6m;
         add_header Cache-Control "no-store" always;
     }
 
@@ -203,39 +261,109 @@ docker exec Nginx-LUNCHINATOR nginx -t
 docker exec Nginx-LUNCHINATOR nginx -s reload
 ```
 
-#### 5) Ensure write permissions for vote storage
+#### 5) Ensure write permissions for data storage
 Inside the host:
 ```bash
 cd ~/nginx/lunchinator/www/api
-mkdir -p votes_data
+mkdir -p votes_data images_data
 
 # php-fpm (Debian/Alpine) runs as www-data, uid:gid often 33:33
 docker exec lunchinator-php sh -c 'id -u www-data; id -g www-data'
 
 # Use those numbers (usually 33:33):
-sudo chown -R 33:33 votes_data
-sudo chmod -R 775 votes_data
+sudo chown -R 33:33 votes_data images_data
+sudo chmod -R 775 votes_data images_data
+
+# Create .htaccess for image directory security
+cat > images_data/.htaccess << 'EOF'
+# Prevent execution of any scripts in this directory
+<Files "*">
+    SetHandler default-handler
+</Files>
+Options -ExecCGI
+RemoveHandler .cgi .php .pl .py .sh
+EOF
 ```
 
-#### 6) Test (HTTP & HTTPS)
-If your host maps `Nginx-LUNCHINATOR` ports as `7780->80` and `7743->443`:
+#### 6) Set up image cleanup (24-hour retention)
+The image upload feature automatically deletes images older than 24 hours. Set up a cron job to trigger cleanup:
+
+**Option A: Server Cron Job**
 ```bash
-# GET counts
+# Add to crontab (crontab -e)
+0 * * * * curl -s "http://localhost:7780/api/images.php" > /dev/null 2>&1
+```
+
+**Option B: Docker Cleanup Container**
+```bash
+# Create cleanup script
+cat > cleanup.sh << 'EOF'
+#!/bin/bash
+while true; do
+    sleep 3600  # Wait 1 hour
+    curl -s "http://lunchinator-nginx/api/images.php" > /dev/null 2>&1
+done
+EOF
+
+chmod +x cleanup.sh
+
+# Run cleanup container
+docker run -d \
+  --name lunchinator-cleanup \
+  --network lunchinet \
+  -v "$PWD/cleanup.sh:/cleanup.sh" \
+  alpine/curl:latest \
+  sh /cleanup.sh
+```
+
+#### 7) Test APIs (HTTP & HTTPS)
+If your host maps `Nginx-LUNCHINATOR` ports as `7780->80` and `7743->443`:
+
+**Test Voting API:**
+```bash
+# GET vote counts
 curl "http://127.0.0.1:7780/api/votes.php?action=get&key=vote_2025-08-28_lunch_pasta_menu"
 
 # POST a vote
 curl -X POST -H "Content-Type: application/json" \
   -d '{"action":"vote","key":"vote_2025-08-28_lunch_pasta_menu","voteType":"good","userId":"user_123"}' \
   "http://127.0.0.1:7780/api/votes.php"
+```
 
-# HTTPS (use -k if you have a self-signed cert)
+**Test Image Upload API:**
+```bash
+# Upload an image (replace with actual image file)
+curl -X POST \
+  -F "key=img_2025-08-28_pasta_menu" \
+  -F "image=@test-image.jpg" \
+  "http://127.0.0.1:7780/api/images.php"
+
+# Get uploaded images
+curl "http://127.0.0.1:7780/api/images.php?key=img_2025-08-28_pasta_menu"
+
+# Trigger cleanup
+curl "http://127.0.0.1:7780/api/images.php"
+```
+
+**HTTPS Testing:**
+```bash
+# Use -k if you have a self-signed cert
 curl -k "https://127.0.0.1:7743/api/votes.php?action=get&key=vote_2025-08-28_lunch_pasta_menu"
+curl -k "https://127.0.0.1:7743/api/images.php?key=img_2025-08-28_pasta_menu"
 ```
-You should see files appear under `www/api/votes_data/`, e.g.:
-```
-vote_2025-08-28_lunch_...json
-user_user_123.json
-```
+
+**Expected Results:**
+- Vote files appear under `www/api/votes_data/`:
+  ```
+  vote_2025-08-28_lunch_...json
+  user_user_123.json
+  ```
+- Image files appear under `www/api/images_data/`:
+  ```
+  img_2025-08-28_pasta_menu/
+  ├── metadata.json
+  └── timestamp_hash.jpg
+  ```
 
 ---
 
@@ -280,17 +408,46 @@ Set `VOTING_CONFIG.apiUrl` accordingly (e.g., `/api`).
 ---
 
 ## Data Storage
-Votes are stored as JSON in `www/api/votes_data/`:
 
+### Voting System
+Votes are stored as JSON in `www/api/votes_data/`:
 *   `vote_YYYY-MM-DD_<category>_<dish>_<menutype>.json` — vote counters
 *   `user_<userid>.json` — which items a user has voted on
 
+### Image Upload System
+Images are stored in `www/api/images_data/` with the following structure:
+```
+images_data/
+├── img_YYYY-MM-DD_<dish>_<menutype>/
+│   ├── metadata.json           # Upload timestamps and file info
+│   ├── timestamp_hash.jpg      # Actual image files
+│   └── ...
+└── .htaccess                   # Security protection
+```
+
+**Retention Policy**: Images are automatically deleted after 24 hours to save storage space.
+
 ## Security Features
+
+### Voting Security
 *   Server-side duplicate vote prevention
 *   Per-user vote cap (`$maxVotesPerUser = 10`)
-*   Input sanitization
-*   CORS headers enabled in `votes.php`
-*   SPA falls back to `localStorage` if the API is unreachable
+*   Input sanitization and validation
+*   CORS headers enabled for cross-origin requests
+
+### Image Upload Security
+*   **File Validation**: MIME type and content validation using `getimagesize()`
+*   **Extension Whitelisting**: Only .jpg, .jpeg, .png, .webp allowed
+*   **Size Limits**: Maximum 5MB per image
+*   **Secure Naming**: Random filenames prevent directory traversal
+*   **Script Prevention**: .htaccess prevents execution of uploaded files
+*   **Content-Type Headers**: Proper image headers when serving files
+*   **24-Hour Cleanup**: Automatic deletion prevents storage abuse
+
+### General Security
+*   SPA falls back to `localStorage` if APIs are unreachable
+*   Input sanitization across all endpoints
+*   Error messages don't expose system details
 
 ---
 
@@ -310,28 +467,116 @@ Votes are stored as JSON in `www/api/votes_data/`:
 
 ---
 
-## API (PHP)
+## API Documentation
+
+### Voting API (`/api/votes.php`)
 
 #### `GET /api/votes.php?action=get&key=<voteKey>`
-Returns:
+Returns current vote counts for a menu item.
+
+**Response:**
 ```json
 {
   "success": true,
   "votes": {
-    "good": 0,
-    "neutral": 0,
-    "bad": 0
+    "good": 5,
+    "neutral": 2,
+    "bad": 1
   }
 }
 ```
 
 #### `POST /api/votes.php`
-Body:
+Submit a vote for a menu item.
+
+**Request Body:**
 ```json
 {
   "action": "vote",
-  "key": "...",
+  "key": "vote_2025-08-28_lunch_pasta_menu",
   "voteType": "good|neutral|bad",
-  "userId": "user_..."
+  "userId": "user_12345"
 }
 ```
+
+**Response:**
+```json
+{
+  "success": true,
+  "votes": {
+    "good": 6,
+    "neutral": 2,
+    "bad": 1
+  }
+}
+```
+
+### Image Upload API (`/api/images.php`)
+
+#### `POST /api/images.php` - Upload Image
+Upload an image for a menu item.
+
+**Request (multipart/form-data):**
+```bash
+curl -X POST \
+  -F "key=img_2025-08-28_pasta_menu" \
+  -F "image=@photo.jpg" \
+  "/api/images.php"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "filename": "20250828_143022_a1b2c3.jpg",
+  "message": "Image uploaded successfully"
+}
+```
+
+#### `GET /api/images.php?key=<imageKey>` - List Images
+Get all images for a menu item.
+
+**Response:**
+```json
+{
+  "success": true,
+  "images": [
+    {
+      "filename": "20250828_143022_a1b2c3.jpg",
+      "timestamp": "2025-08-28 14:30:22",
+      "url": "/api/images.php?action=view&key=img_2025-08-28_pasta_menu&file=20250828_143022_a1b2c3.jpg"
+    }
+  ]
+}
+```
+
+#### `GET /api/images.php?action=view&key=<imageKey>&file=<filename>` - View Image
+Display an uploaded image.
+
+**Response:** Raw image data with proper Content-Type headers.
+
+#### `GET /api/images.php` - Cleanup Trigger
+Triggers cleanup of images older than 24 hours (used by cron jobs).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Cleanup completed",
+  "deleted": ["img_2025-08-27_pasta_menu"]
+}
+```
+
+### Error Responses
+All endpoints return error responses in this format:
+```json
+{
+  "success": false,
+  "error": "Error description"
+}
+```
+
+### Key Formats
+- **Vote keys**: `vote_YYYY-MM-DD_<category>_<dish>_<menutype>`
+- **Image keys**: `img_YYYY-MM-DD_<dish>_<menutype>`
+- **User IDs**: `user_<unique_identifier>`
