@@ -20,6 +20,7 @@ $dataDir = __DIR__ . '/images_data';
 $maxFileSize = 5 * 1024 * 1024; // 5MB max file size
 $retentionHours = 24;
 $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
 
 // Ensure data directory exists
 if (!is_dir($dataDir)) {
@@ -183,9 +184,36 @@ try {
             throw new Exception('File too large. Maximum size is 5MB');
         }
         
-        // Validate file type
+        // Validate file type using MIME type
         if (!in_array($file['type'], $allowedTypes)) {
             throw new Exception('Invalid file type. Only JPEG, PNG, and WebP are allowed');
+        }
+        
+        // SECURITY: Validate actual image content to prevent malicious files
+        $imageInfo = getimagesize($file['tmp_name']);
+        if ($imageInfo === false) {
+            throw new Exception('Invalid image file. File is not a valid image');
+        }
+        
+        // SECURITY: Determine safe file extension based on actual image type
+        $safeExtension = '';
+        switch ($imageInfo[2]) {
+            case IMAGETYPE_JPEG:
+                $safeExtension = 'jpg';
+                break;
+            case IMAGETYPE_PNG:
+                $safeExtension = 'png';
+                break;
+            case IMAGETYPE_WEBP:
+                $safeExtension = 'webp';
+                break;
+            default:
+                throw new Exception('Unsupported image type. Only JPEG, PNG, and WebP are allowed');
+        }
+        
+        // Double-check that the determined extension is in our allowlist
+        if (!in_array($safeExtension, $allowedExtensions)) {
+            throw new Exception('Image type validation failed');
         }
         
         // Create dish directory
@@ -194,9 +222,8 @@ try {
             mkdir($imageDir, 0755, true);
         }
         
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = time() . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+        // Generate unique filename with SECURE extension (never trust user input)
+        $filename = time() . '_' . bin2hex(random_bytes(8)) . '.' . $safeExtension;
         $targetPath = $imageDir . '/' . $filename;
         
         // Move uploaded file

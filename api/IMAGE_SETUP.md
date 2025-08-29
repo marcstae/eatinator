@@ -6,6 +6,26 @@ This document describes how to set up and maintain the image upload feature for 
 
 The image upload feature requires the same server setup as the voting system. Images are stored in `api/images_data/` with a 24-hour retention policy.
 
+## Security
+
+The image upload feature includes multiple security layers to prevent malicious file uploads:
+
+### File Validation
+- **MIME Type Validation**: Checks uploaded file MIME type
+- **Content Validation**: Uses `getimagesize()` to verify files are actual images
+- **Extension Whitelisting**: Only allows .jpg, .jpeg, .png, .webp extensions
+- **Secure Filename Generation**: Never uses user-provided file extensions
+
+### Upload Protection
+- **File Size Limits**: Maximum 5MB per image
+- **Type Enforcement**: Files are validated as real images, not just by extension
+- **Safe Storage**: Uploaded files get secure, randomly generated names
+
+### Execution Prevention
+- **.htaccess Protection**: Prevents execution of any scripts in the images directory
+- **Extension Mapping**: File extensions are determined from actual image content
+- **Content-Type Headers**: Proper image content-type headers are set when serving files
+
 ### Directory Structure
 
 ```

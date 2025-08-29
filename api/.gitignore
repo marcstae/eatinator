@@ -4,3 +4,5 @@ votes_data/
 
 # Image upload data - these are generated at runtime
 images_data/
+# But keep security files
+!images_data/.htaccess
