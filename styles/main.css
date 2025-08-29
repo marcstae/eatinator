@@ -1,0 +1,168 @@
+/* Main styles for Eatinator app */
+
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body {
+    overscroll-behavior: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.swiftui-card {
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(84, 84, 88, 0.4);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.swiftui-button {
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    user-select: none;
+}
+
+.swiftui-button:active {
+    transform: scale(0.96);
+    opacity: 0.8;
+}
+
+.segment-control {
+    background: rgba(58, 58, 60, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    padding: 2px;
+}
+
+.segment-active {
+    background: rgba(0, 122, 255, 1);
+    border-radius: 8px;
+    color: white;
+}
+
+.day-button {
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(84, 84, 88, 0.3);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.day-button.active {
+    background: rgba(0, 122, 255, 1);
+    border-color: rgba(0, 122, 255, 1);
+    color: white;
+}
+
+.price-badge {
+    background: linear-gradient(135deg, #007AFF, #5AC8FA);
+    color: white;
+    font-weight: 600;
+}
+
+.loading-animation {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dietary-badge {
+    background: rgba(52, 199, 89, 0.2);
+    color: #34C759;
+    border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.dietary-badge.vegetarian {
+    background: rgba(52, 199, 89, 0.2);
+    color: #34C759;
+    border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+.dietary-badge.pork {
+    background: rgba(255, 149, 0, 0.2);
+    color: #FF9500;
+    border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+.dietary-badge.beef {
+    background: rgba(255, 59, 48, 0.2);
+    color: #FF3B30;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+}
+
+.dietary-badge.poultry {
+    background: rgba(255, 204, 0, 0.2);
+    color: #FFCC00;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+
+.dietary-badge.fish {
+    background: rgba(0, 122, 255, 0.2);
+    color: #007AFF;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+}
+
+.dietary-badge.veal {
+    background: rgba(175, 82, 222, 0.2);
+    color: #AF52DE;
+    border: 1px solid rgba(175, 82, 222, 0.3);
+}
+
+.menu-type-badge {
+    background: rgba(58, 58, 60, 0.8);
+    color: #AEAEB2;
+    border: 1px solid rgba(84, 84, 88, 0.4);
+}
+
+/* Voting buttons */
+.vote-button {
+    background: rgba(58, 58, 60, 0.6);
+    color: #AEAEB2;
+    border: 1px solid rgba(84, 84, 88, 0.4);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.vote-button:hover {
+    background: rgba(84, 84, 88, 0.6);
+    color: #FFFFFF;
+}
+
+.vote-button-selected {
+    background: rgba(0, 122, 255, 0.8);
+    color: #FFFFFF;
+    border: 1px solid rgba(0, 122, 255, 1);
+}
+
+.vote-button-disabled {
+    background: rgba(58, 58, 60, 0.3);
+    color: #636366;
+    border: 1px solid rgba(84, 84, 88, 0.2);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Status bar safe area */
+.safe-top {
+    padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+}
