@@ -204,7 +204,7 @@ function generateImageHtml(dishName, menuType) {
                     <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
                             onclick="showImages('${dishName.replace(/'/g, "\\'")}', '${menuType}')">
                         <span class="text-lg">🖼️</span>
-                        <span class="text-sm font-medium">View Photos</span>
+                        <span class="text-sm font-medium">Photos</span>
                     </button>
                 </div>
             </div>
