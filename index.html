@@ -333,13 +333,42 @@
             timeout: 10000 // 10 second timeout for uploads
         };
 
-        // Check if voting is currently active (only for current day and current meal time)
+        // Check if current time is within voting window for a specific meal category
+        function isInVotingTimeWindow(mealCategory) {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = hours * 60 + minutes; // Convert to minutes since midnight
+            
+            // Define voting time windows in minutes since midnight
+            const votingWindows = {
+                breakfast: { start: 6 * 60, end: 7 * 60 + 15 }, // 06:00 - 07:15
+                lunch: { start: 11 * 60 + 30, end: 13 * 60 }, // 11:30 - 13:00
+                dinner: { start: 17 * 60 + 30, end: 19 * 60 } // 17:30 - 19:00
+            };
+            
+            const window = votingWindows[mealCategory];
+            if (!window) return false;
+            
+            return currentTime >= window.start && currentTime <= window.end;
+        }
+
+        // Get voting time window info for display
+        function getVotingTimeWindow(mealCategory) {
+            const windows = {
+                breakfast: "06:00 - 07:15",
+                lunch: "11:30 - 13:00", 
+                dinner: "17:30 - 19:00"
+            };
+            return windows[mealCategory] || "";
+        }
+
+        // Check if voting is currently active (only for current day and within voting time window)
         function isVotingActive() {
             const today = new Date().toISOString().split('T')[0];
-            const currentMealCategory = getDefaultMealCategory();
             
-            // Voting is only active when viewing today's menu for the current meal period
-            return currentDate === today && currentCategory === currentMealCategory;
+            // Voting is only active when viewing today's menu and within the voting time window
+            return currentDate === today && isInVotingTimeWindow(currentCategory);
         }
 
         // Generate a unique key for menu item voting
@@ -385,7 +414,7 @@
             return null;
         }
 
-        async function submitServerVote(voteKey, voteType, userId) {
+        async function submitServerVote(voteKey, voteType, userId, existingVote = null) {
             if (!VOTING_CONFIG.enabled) {
                 return false;
             }
@@ -401,7 +430,8 @@
                         action: 'vote',
                         key: voteKey,
                         voteType: voteType,
-                        userId: userId
+                        userId: userId,
+                        existingVote: existingVote
                     }),
                     signal: controller.signal
                 });
@@ -451,25 +481,30 @@
 
         // Cast a vote for a menu item
         async function castVote(dishName, menuType, voteType) {
-            if (!isVotingActive()) {
-                return false; // Voting not active
+            // Check if we're viewing today's menu
+            const today = new Date().toISOString().split('T')[0];
+            if (currentDate !== today) {
+                return false; // Can only vote on today's menu
+            }
+            
+            // Check if we're in the voting time window
+            if (!isInVotingTimeWindow(currentCategory)) {
+                showVotingTimePopup(currentCategory);
+                return false;
             }
 
             const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
             const userVoteKey = `user_${voteKey}`;
             const userId = getUserId();
             
-            // Check if user has already voted
+            // Get existing vote (if any) to handle vote changes
             const existingVote = localStorage.getItem(userVoteKey);
-            if (existingVote) {
-                return false; // User has already voted
-            }
 
             // Try to submit vote to server first
-            const serverSuccess = await submitServerVote(voteKey, voteType, userId);
+            const serverSuccess = await submitServerVote(voteKey, voteType, userId, existingVote);
             
             if (serverSuccess) {
-                // Server vote successful - save user vote locally to prevent re-voting
+                // Server vote successful - save user vote locally
                 localStorage.setItem(userVoteKey, voteType);
                 // Clear cached server votes to force refresh
                 localStorage.removeItem(`server_${voteKey}`);
@@ -481,8 +516,15 @@
                 // Get current local votes
                 const votes = getVotes(voteKey);
                 
-                // Increment the selected vote type
-                votes[voteType]++;
+                // Handle vote change: decrement old vote, increment new vote
+                if (existingVote && existingVote !== voteType) {
+                    votes[existingVote] = Math.max(0, votes[existingVote] - 1);
+                }
+                
+                // Increment the selected vote type (only if it's a new vote or different vote)
+                if (!existingVote || existingVote !== voteType) {
+                    votes[voteType]++;
+                }
                 
                 // Save updated votes and user's vote locally
                 localStorage.setItem(voteKey, JSON.stringify(votes));
@@ -490,6 +532,27 @@
                 
                 return true;
             }
+        }
+
+        // Show voting time restriction popup
+        function showVotingTimePopup(mealCategory) {
+            const timeWindow = getVotingTimeWindow(mealCategory);
+            const message = `Voting for ${mealCategory} is only available during ${timeWindow}. Please try again during the voting window.`;
+            
+            // Create a simple modal popup
+            const popup = document.createElement('div');
+            popup.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: #1c1c1e; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 300px; text-align: center; margin: 20px;">
+                        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px; font-weight: 600;">Voting Not Available</h3>
+                        <p style="margin-bottom: 20px; line-height: 1.4; opacity: 0.8;">${message}</p>
+                        <button onclick="this.closest('div').parentElement.remove()" style="background: #007AFF; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 500; cursor: pointer;">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(popup);
         }
 
         // Check if user has voted for a specific item
@@ -844,14 +907,28 @@
                 const emoji = VOTE_EMOJIS[voteType];
                 const count = votes[voteType];
                 const isUserVote = userVote === voteType;
-                const buttonClass = hasVoted 
-                    ? (isUserVote ? 'vote-button-selected' : 'vote-button-disabled') 
-                    : 'vote-button';
+                const isVotingActiveNow = isVotingActive();
+                
+                // Determine button style and state
+                let buttonClass, isDisabled;
+                if (!isVotingActiveNow) {
+                    // Voting not active - show disabled state
+                    buttonClass = isUserVote ? 'vote-button-selected' : 'vote-button-disabled';
+                    isDisabled = true;
+                } else if (isUserVote) {
+                    // User's current vote - highlighted but clickable to change
+                    buttonClass = 'vote-button-selected';
+                    isDisabled = false;
+                } else {
+                    // Available option
+                    buttonClass = 'vote-button';
+                    isDisabled = false;
+                }
                 
                 return `
                     <button class="${buttonClass} swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
                             onclick="handleVote('${dishName.replace(/'/g, "\\'")}', '${menuType}', '${voteType}')"
-                            ${hasVoted ? 'disabled' : ''}>
+                            ${isDisabled ? 'disabled' : ''}>
                         <span class="text-lg">${emoji}</span>
                         <span class="text-sm font-medium vote-count" data-vote-type="${voteType}">${count}</span>
                     </button>

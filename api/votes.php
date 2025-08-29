@@ -90,6 +90,7 @@ try {
         $voteKey = $input['key'] ?? '';
         $voteType = $input['voteType'] ?? '';
         $userId = $input['userId'] ?? '';
+        $existingVote = $input['existingVote'] ?? null;
         
         if (empty($voteKey) || empty($voteType) || empty($userId)) {
             throw new Exception('Missing required parameters');
@@ -99,21 +100,29 @@ try {
             throw new Exception('Invalid vote type');
         }
         
-        // Check if user has already voted for this item
+        // Load user votes and current votes
         $userVotes = loadUserVotes($userId);
-        if (isset($userVotes[$voteKey])) {
-            throw new Exception('User has already voted for this item');
-        }
-        
-        // Check vote limit per user
-        if (count($userVotes) >= $maxVotesPerUser) {
-            throw new Exception('Vote limit exceeded');
-        }
-        
-        // Load current votes
         $votes = loadVotes($voteKey);
         
-        // Increment the vote
+        // Check if user has already voted for this item
+        $hasExistingVote = isset($userVotes[$voteKey]);
+        
+        if ($hasExistingVote) {
+            // User is changing their vote
+            $currentVote = $userVotes[$voteKey];
+            
+            // Decrement the old vote count
+            if (isset($votes[$currentVote]) && $votes[$currentVote] > 0) {
+                $votes[$currentVote]--;
+            }
+        } else {
+            // New vote - check vote limit per user
+            if (count($userVotes) >= $maxVotesPerUser) {
+                throw new Exception('Vote limit exceeded');
+            }
+        }
+        
+        // Increment the new vote
         $votes[$voteType]++;
         
         // Save updated votes
