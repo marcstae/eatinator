@@ -38,13 +38,13 @@ The new backend is built with:
 #### GET /api/votes.php
 Get votes for a specific item.
 ```bash
-curl "http://localhost:8080/api/votes.php?key=vote_key"
+curl "http://localhost:5694/api/votes.php?key=vote_key"
 ```
 
 #### POST /api/votes.php
 Cast a vote for an item.
 ```bash
-curl -X POST "http://localhost:8080/api/votes.php" \
+curl -X POST "http://localhost:5694/api/votes.php" \
   -H "Content-Type: application/json" \
   -d '{
     "action": "vote",
@@ -59,19 +59,19 @@ curl -X POST "http://localhost:8080/api/votes.php" \
 #### GET /api/images.php
 Get images for a dish.
 ```bash
-curl "http://localhost:8080/api/images.php?key=image_key"
+curl "http://localhost:5694/api/images.php?key=image_key"
 ```
 
 #### GET /api/images.php?action=view
 Serve an image file.
 ```bash
-curl "http://localhost:8080/api/images.php?action=view&key=image_key&file=filename.jpg"
+curl "http://localhost:5694/api/images.php?action=view&key=image_key&file=filename.jpg"
 ```
 
 #### POST /api/images.php
 Upload an image.
 ```bash
-curl -X POST "http://localhost:8080/api/images.php" \
+curl -X POST "http://localhost:5694/api/images.php" \
   -F "key=image_key" \
   -F "image=@image.jpg"
 ```
@@ -120,7 +120,7 @@ docker-compose up -d
 ```bash
 cd api
 docker build -t eatinator-api .
-docker run -d -p 8080:8080 -v $(pwd)/data:/app/data eatinator-api
+docker run -d -p 5694:5694 -v $(pwd)/data:/app/data eatinator-api
 ```
 
 ## Configuration
@@ -145,7 +145,7 @@ The main differences:
 ## Health Check
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:5694/health
 ```
 
 Returns:

@@ -12,7 +12,7 @@ if ! python3 -c "import fastapi" 2>/dev/null; then
 fi
 
 # Start FastAPI backend in background
-echo "🔧 Starting FastAPI backend on port 8080..."
+echo "🔧 Starting FastAPI backend on port 5694..."
 cd api
 python3 main.py &
 FASTAPI_PID=$!
@@ -29,8 +29,8 @@ PROXY_PID=$!
 echo ""
 echo "✅ Development environment started!"
 echo "   Frontend: http://localhost:8000"
-echo "   Backend API: http://localhost:8080"
-echo "   Health check: http://localhost:8080/health"
+echo "   Backend API: http://localhost:5694"
+echo "   Health check: http://localhost:5694/health"
 echo ""
 echo "Press Ctrl+C to stop all services..."
 

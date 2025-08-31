@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 PORT = 8000
-FASTAPI_BACKEND = "http://localhost:8080"
+FASTAPI_BACKEND = "http://localhost:5694"
 
 class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):

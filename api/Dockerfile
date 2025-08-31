@@ -21,11 +21,11 @@ COPY main.py .
 RUN mkdir -p /app/data/images
 
 # Expose port
-EXPOSE 8080
+EXPOSE 5694
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5694"]
