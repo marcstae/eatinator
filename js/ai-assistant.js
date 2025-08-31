@@ -47,11 +47,17 @@ function initAiAssistant() {
     // Detect user language
     detectUserLanguage();
     
-    // Create AI chat interface
+    // Ensure chat starts hidden for minimal screen usage
+    aiChatVisible = false;
+    
+    // Create AI chat interface (starts hidden by default)
     createAiChatInterface();
     
     // Add FAB button
     createAiFab();
+    
+    // Save the default hidden state
+    saveAiSettings();
 }
 
 // Load AI settings from localStorage
@@ -60,11 +66,13 @@ function loadAiSettings() {
         const settings = localStorage.getItem(AI_CONFIG.storageKey);
         if (settings) {
             const parsed = JSON.parse(settings);
-            aiChatVisible = parsed.chatVisible || false;
+            // Always start with chat hidden for better space usage
+            aiChatVisible = false; 
             userLanguage = parsed.language || 'en';
         }
     } catch (error) {
         console.log('No AI settings found, using defaults');
+        aiChatVisible = false; // Default to hidden
     }
 }
 
@@ -112,22 +120,43 @@ function createAiFab() {
     
     const fab = document.createElement('button');
     fab.id = 'aiFab';
-    fab.className = 'fixed bottom-6 right-4 w-12 h-12 bg-gradient-to-tr from-ios-blue to-blue-500 text-white rounded-full shadow-xl z-40 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-2xl active:scale-95';
-    fab.style.background = 'linear-gradient(135deg, #007AFF 0%, #0056CC 100%)';
-    fab.style.boxShadow = '0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)';
+    fab.className = 'fixed bottom-4 right-4 w-14 h-14 text-white rounded-full shadow-xl z-40 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-2xl active:scale-95 group';
+    
+    // Enhanced fancy styling with multiple gradients and glow effects
+    fab.style.background = 'linear-gradient(135deg, #007AFF 0%, #5856D6 50%, #AF52DE 100%)';
+    fab.style.boxShadow = '0 10px 30px rgba(0, 122, 255, 0.4), 0 4px 15px rgba(88, 86, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+    fab.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+    fab.style.backdropFilter = 'blur(10px)';
+    
     fab.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
-        </svg>
+        <div class="relative">
+            <svg class="w-6 h-6 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
+            </svg>
+            <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-80"></div>
+        </div>
     `;
     fab.onclick = toggleAiChat;
     fab.title = getLocalizedText('ai_assistant');
     
-    // Add pulsing animation to attract attention initially
-    fab.style.animation = 'pulse 2s infinite';
+    // Add sophisticated pulsing animation initially
+    fab.style.animation = 'pulse 2s infinite, glow 3s ease-in-out infinite alternate';
     setTimeout(() => {
-        fab.style.animation = 'none';
-    }, 6000);
+        fab.style.animation = 'glow 4s ease-in-out infinite alternate';
+    }, 8000);
+    
+    // Add custom keyframe animations via style element
+    if (!document.getElementById('fabAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'fabAnimations';
+        style.textContent = `
+            @keyframes glow {
+                0% { box-shadow: 0 10px 30px rgba(0, 122, 255, 0.4), 0 4px 15px rgba(88, 86, 214, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+                100% { box-shadow: 0 15px 40px rgba(0, 122, 255, 0.6), 0 6px 20px rgba(88, 86, 214, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
     document.body.appendChild(fab);
     
@@ -262,23 +291,35 @@ function detectBrowserLanguage() {
 function createAiChatInterface() {
     const chatContainer = document.createElement('div');
     chatContainer.id = 'aiChatContainer';
-    chatContainer.className = `fixed inset-x-0 bottom-0 bg-ios-dark-2 border-t border-ios-dark-4 transform transition-transform duration-300 z-30 ${aiChatVisible ? 'translate-y-0' : 'translate-y-full'}`;
-    chatContainer.style.height = '40vh'; // Reduced from 60vh to 40vh for less screen usage
-    chatContainer.style.borderRadius = '16px 16px 0 0';
-    chatContainer.style.boxShadow = '0 -4px 20px rgba(0, 0, 0, 0.3)';
+    // Force initial state to be hidden with display:none for reliable hiding when Tailwind is blocked
+    chatContainer.className = `fixed inset-x-0 bottom-0 bg-ios-dark-2 border-t border-ios-dark-4 transform transition-transform duration-300 z-30`;
+    chatContainer.style.height = '35vh'; // Reduced from 40vh to 35vh for even less screen usage
+    chatContainer.style.borderRadius = '20px 20px 0 0';
+    chatContainer.style.boxShadow = '0 -8px 30px rgba(0, 0, 0, 0.4), 0 -2px 10px rgba(0, 122, 255, 0.1)';
+    chatContainer.style.backdropFilter = 'blur(20px)';
+    chatContainer.style.borderTop = '1px solid rgba(255, 255, 255, 0.1)';
+    chatContainer.style.display = 'none'; // Ensure it starts completely hidden
+    chatContainer.style.transform = 'translateY(100%)'; // Additional fallback for when Tailwind is blocked
     
     chatContainer.innerHTML = `
         <div class="flex flex-col h-full">
             <!-- Chat Header with minimize button -->
-            <div class="flex justify-between items-center p-3 border-b border-ios-dark-4 bg-ios-dark-1 rounded-t-2xl">
-                <h3 class="text-lg font-semibold text-white">${getLocalizedText('ai_assistant')}</h3>
+            <div class="flex justify-between items-center p-3 border-b border-ios-dark-4 bg-gradient-to-r from-ios-dark-1 to-ios-dark-2 rounded-t-3xl">
                 <div class="flex items-center space-x-2">
-                    <button onclick="minimizeAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                    <div class="w-6 h-6 bg-gradient-to-tr from-ios-blue to-purple-500 rounded-full flex items-center justify-center">
+                        <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">${getLocalizedText('ai_assistant')}</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="minimizeAiChat()" class="text-ios-gray hover:text-white transition-colors p-1 rounded-full hover:bg-ios-dark-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
                         </svg>
                     </button>
-                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white transition-colors p-1 rounded-full hover:bg-ios-dark-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
@@ -287,23 +328,23 @@ function createAiChatInterface() {
             </div>
             
             <!-- Chat Messages -->
-            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
+            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 bg-gradient-to-b from-ios-dark-2 to-ios-dark-1">
                 <!-- Messages will be added here -->
             </div>
             
             <!-- Chat Input -->
-            <div class="p-3 border-t border-ios-dark-4 bg-ios-dark-1">
+            <div class="p-3 border-t border-ios-dark-4 bg-gradient-to-r from-ios-dark-1 to-ios-dark-2">
                 <div class="flex space-x-2">
                     <input 
                         type="text" 
                         id="aiChatInput" 
                         placeholder="${getLocalizedText('ask_about_menu')}"
-                        class="flex-1 bg-ios-dark-3 text-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue placeholder-ios-gray-2"
+                        class="flex-1 bg-ios-dark-3 text-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue placeholder-ios-gray-2 border border-ios-dark-4"
                         onkeypress="handleChatInputKeyPress(event)"
                     >
                     <button 
                         onclick="sendAiMessage()" 
-                        class="bg-gradient-to-r from-ios-blue to-blue-500 text-white px-3 py-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95">
+                        class="bg-gradient-to-r from-ios-blue to-purple-500 text-white px-3 py-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                         </svg>
@@ -315,7 +356,7 @@ function createAiChatInterface() {
     
     document.body.appendChild(chatContainer);
     
-    // Add welcome message
+    // Add welcome message focused on recommendations
     if (aiMessages.length === 0) {
         addAiMessage('assistant', getLocalizedText('ai_welcome_message'));
     }
@@ -325,12 +366,12 @@ function createAiChatInterface() {
 function minimizeAiChat() {
     const chatContainer = document.getElementById('aiChatContainer');
     if (chatContainer) {
-        chatContainer.style.height = '120px';
+        chatContainer.style.height = '80px'; // Even more compact
         chatContainer.innerHTML = `
-            <div class="flex items-center justify-between p-4 bg-ios-dark-1 rounded-t-2xl h-full">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-gradient-to-tr from-ios-blue to-blue-500 rounded-full flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center justify-between p-3 bg-gradient-to-r from-ios-dark-1 to-ios-dark-2 rounded-t-3xl h-full border-t border-ios-dark-4" style="backdrop-filter: blur(20px);">
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="expandAiChat()">
+                    <div class="w-10 h-10 bg-gradient-to-tr from-ios-blue via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01"/>
                         </svg>
                     </div>
@@ -339,14 +380,14 @@ function minimizeAiChat() {
                         <div class="text-ios-gray-2 text-xs">${getLocalizedText('tap_to_expand')}</div>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button onclick="expandAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center space-x-1">
+                    <button onclick="expandAiChat()" class="text-ios-gray hover:text-white transition-all duration-200 p-2 rounded-full hover:bg-ios-dark-3 hover:scale-110">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7l4-4m0 0l4 4m-4-4v18"/>
                         </svg>
                     </button>
-                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-red-400 transition-all duration-200 p-2 rounded-full hover:bg-ios-dark-3 hover:scale-110">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
@@ -358,12 +399,20 @@ function minimizeAiChat() {
 
 // Expand AI chat back to full view
 function expandAiChat() {
-    // Recreate the full chat interface
+    aiChatVisible = true;
     const chatContainer = document.getElementById('aiChatContainer');
     if (chatContainer) {
         chatContainer.remove();
     }
     createAiChatInterface();
+    // Show the recreated interface
+    const newContainer = document.getElementById('aiChatContainer');
+    if (newContainer) {
+        newContainer.style.display = 'block';
+        newContainer.style.transform = 'translateY(0)';
+        newContainer.classList.remove('translate-y-full');
+    }
+    saveAiSettings();
 }
 
 // Toggle AI chat visibility
@@ -373,12 +422,18 @@ function toggleAiChat() {
     const fab = document.getElementById('aiFab');
     
     if (aiChatVisible) {
+        // Show the chat container
+        chatContainer.style.display = 'block';
+        chatContainer.style.transform = 'translateY(0)';
         chatContainer.classList.remove('translate-y-full');
         if (fab) {
             fab.style.opacity = '0.7';
             fab.style.transform = 'scale(0.9)';
         }
     } else {
+        // Hide the chat container
+        chatContainer.style.display = 'none';
+        chatContainer.style.transform = 'translateY(100%)';
         chatContainer.classList.add('translate-y-full');
         if (fab) {
             fab.style.opacity = '1';
@@ -473,11 +528,15 @@ async function callAiApi(message, context) {
             let payload, response;
             
             if (endpoint.isOllama) {
-                // Ollama-style API (mlvoca.com)
+                // Ollama-style API (mlvoca.com) - optimized based on documentation
                 payload = {
                     model: endpoint.model,
                     prompt: `${systemPrompt}\n\nUser: ${message}\nAssistant:`,
-                    stream: false
+                    stream: false,
+                    options: {
+                        temperature: AI_CONFIG.temperature,
+                        num_predict: AI_CONFIG.maxTokens
+                    }
                 };
             } else {
                 // OpenAI-style API
@@ -532,44 +591,65 @@ async function callAiApi(message, context) {
     return generateFallbackResponse(message, context);
 }
 
-// Generate system prompt with menu context
+// Generate system prompt with menu context - focused on recommendations not listing
 function getSystemPrompt(context) {
     const language = context.language;
+    const hasItems = context.items && context.items.length > 0;
     
     if (language === 'de') {
-        return `Du bist ein hilfsbreiter Menü-Berater für das Restaurant "${context.restaurant}". 
+        const menuContext = hasItems ? 
+            `Heutige Gerichte (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
+            `Keine Menüdaten verfügbar für ${context.category} am ${context.date}`;
+            
+        return `Du bist ein persönlicher Menü-Berater für "${context.restaurant}". 
         
-Heutiges Datum: ${context.date}
-Aktuelle Zeit: ${context.time}
-Aktuelle Kategorie: ${context.category}
+${menuContext}
 
-Verfügbare Menüs heute:
-${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})${item.dietary ? ` - Allergene: ${item.dietary}` : ''}`).join('\n')}
+🎯 FOKUS: Gib persönliche EMPFEHLUNGEN und ALLERGIE-BERATUNG. Nutzer kennen bereits das Menü.
 
-Deine Hauptaufgaben:
-1. EMPFEHLUNGEN geben: Welches Gericht sollte jemand wählen basierend auf Vorlieben
-2. ALLERGIE-INFORMATIONEN: Hilf bei Fragen zu Gluten, Laktose, Nüssen, etc.
-3. ERNÄHRUNGSBERATUNG: Vegetarische/vegane Optionen vorschlagen
-4. GESCHMACKS-TIPPS: Beschreibe wie Gerichte schmecken könnten
+Hauptaufgaben:
+1. 🍽️ EMPFEHLUNGEN: "Was soll ich heute essen?" - Vorschläge basierend auf Geschmack, Gesundheit, Stimmung
+2. 🚫 ALLERGIE-SICHERHEIT: Gluten, Laktose, Nüsse, etc. - bei Unsicherheit: "Frag das Personal vor Ort"
+3. 🥗 ERNÄHRUNGSBERATUNG: Vegetarisch, vegan, kalorienarm, proteinreich
+4. 👨‍🍳 GESCHMACKS-TIPPS: "Wie schmeckt das?" - beschreibe Aromen, Texturen, Zubereitungsart
 
-Sei kurz, freundlich und fokussiere dich auf praktische Empfehlungen. Antworte auf Deutsch.`;
+Antworte kurz (1-3 Sätze), freundlich und praktisch. Keine Menülisten - nur Beratung!`;
+    } else if (language === 'fr') {
+        const menuContext = hasItems ? 
+            `Plats du jour (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
+            `Aucune donnée de menu disponible pour ${context.category} le ${context.date}`;
+            
+        return `Vous êtes un conseiller personnel de menu pour "${context.restaurant}".
+        
+${menuContext}
+
+🎯 FOCUS: Donnez des RECOMMANDATIONS personnelles et des CONSEILS sur les ALLERGIES. Les utilisateurs connaissent déjà le menu.
+
+Tâches principales:
+1. 🍽️ RECOMMANDATIONS: "Que dois-je manger aujourd'hui?" - suggestions basées sur le goût, la santé, l'humeur
+2. 🚫 SÉCURITÉ ALLERGIQUE: Gluten, lactose, noix, etc. - en cas de doute: "Demandez au personnel sur place"
+3. 🥗 CONSEILS NUTRITIONNELS: Végétarien, végétalien, faible en calories, riche en protéines
+4. 👨‍🍳 CONSEILS GUSTATIFS: "Quel goût cela a-t-il?" - décrivez les arômes, textures, méthodes de cuisson
+
+Répondez brièvement (1-3 phrases), amicalement et pratiquement. Pas de listes de menu - juste des conseils!`;
     } else {
-        return `You are a helpful menu advisor for the restaurant "${context.restaurant}".
+        const menuContext = hasItems ? 
+            `Today's dishes (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
+            `No menu data available for ${context.category} on ${context.date}`;
+            
+        return `You are a personal menu advisor for "${context.restaurant}".
         
-Today's date: ${context.date}
-Current time: ${context.time}
-Current category: ${context.category}
+${menuContext}
 
-Available menu items today:
-${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})${item.dietary ? ` - Allergens: ${item.dietary}` : ''}`).join('\n')}
+🎯 FOCUS: Give personal RECOMMENDATIONS and ALLERGY GUIDANCE. Users already know the menu.
 
-Your main tasks:
-1. RECOMMENDATIONS: Suggest which dish someone should choose based on preferences
-2. ALLERGY INFORMATION: Help with questions about gluten, lactose, nuts, etc.
-3. DIETARY ADVICE: Suggest vegetarian/vegan options  
-4. TASTE GUIDANCE: Describe how dishes might taste
+Main tasks:
+1. 🍽️ RECOMMENDATIONS: "What should I eat today?" - suggestions based on taste, health, mood
+2. 🚫 ALLERGY SAFETY: Gluten, lactose, nuts, etc. - when uncertain: "Ask the staff on-site"
+3. 🥗 DIETARY ADVICE: Vegetarian, vegan, low-calorie, high-protein options
+4. 👨‍🍳 TASTE GUIDANCE: "How does it taste?" - describe flavors, textures, cooking methods
 
-Be concise, friendly, and focus on practical recommendations rather than just listing what's available.`;
+Respond briefly (1-3 sentences), friendly and practical. No menu lists - just advice!`;
     }
 }
 
@@ -632,8 +712,8 @@ function getLocalizedText(key) {
     const translations = {
         en: {
             ai_assistant: 'AI Assistant',
-            ask_about_menu: 'Ask about today\'s menu...',
-            ai_welcome_message: 'Hi! I can help you with questions about today\'s menu. What would you like to know?',
+            ask_about_menu: 'What should I eat today?',
+            ai_welcome_message: '🍽️ Need help choosing? Ask me for recommendations or allergy advice!',
             ai_error_message: 'Sorry, I\'m having trouble responding right now. Please try again later.',
             ai_no_response: 'I couldn\'t generate a response. Please try rephrasing your question.',
             settings: 'Settings',
@@ -645,8 +725,8 @@ function getLocalizedText(key) {
         },
         de: {
             ai_assistant: 'KI-Assistent',
-            ask_about_menu: 'Frag mich über das heutige Menü...',
-            ai_welcome_message: 'Hallo! Ich kann dir bei Fragen zum heutigen Menü helfen. Was möchtest du wissen?',
+            ask_about_menu: 'Was soll ich heute essen?',
+            ai_welcome_message: '🍽️ Brauchst du Hilfe bei der Auswahl? Frag mich nach Empfehlungen oder Allergie-Infos!',
             ai_error_message: 'Entschuldigung, ich habe gerade Probleme beim Antworten. Bitte versuche es später noch einmal.',
             ai_no_response: 'Ich konnte keine Antwort generieren. Bitte formuliere deine Frage anders.',
             settings: 'Einstellungen',
@@ -658,8 +738,8 @@ function getLocalizedText(key) {
         },
         fr: {
             ai_assistant: 'Assistant IA',
-            ask_about_menu: 'Demandez-moi à propos du menu d\'aujourd\'hui...',
-            ai_welcome_message: 'Salut! Je peux vous aider avec des questions sur le menu d\'aujourd\'hui. Que voulez-vous savoir?',
+            ask_about_menu: 'Que dois-je manger aujourd\'hui?',
+            ai_welcome_message: '🍽️ Besoin d\'aide pour choisir? Demandez-moi des recommandations ou des conseils allergies!',
             ai_error_message: 'Désolé, j\'ai des problèmes à répondre en ce moment. Veuillez réessayer plus tard.',
             ai_no_response: 'Je n\'ai pas pu générer une réponse. Veuillez reformuler votre question.',
             settings: 'Paramètres',
