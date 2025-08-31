@@ -1,5 +1,8 @@
 # Eatinator 🍽️
 
+[![Docker Build](https://github.com/marcstae/eatinator/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marcstae/eatinator/actions/workflows/docker-build.yml)
+[![Release](https://github.com/marcstae/eatinator/actions/workflows/release.yml/badge.svg)](https://github.com/marcstae/eatinator/actions/workflows/release.yml)
+
 A Progressive Web App (PWA) that displays daily lunch menus from the Eurest restaurant at Kaserne Bern. Built as a modern web application with FastAPI backend and static frontend.
 
 ## 🚀 Quick Start
@@ -175,11 +178,67 @@ python3 proxy_server.py     # Frontend proxy on port 8000
 ## 📋 Deployment
 
 <details>
-<summary><strong>Production Deployment</strong></summary>
+<summary><strong>Production Deployment with Pre-built Images</strong></summary>
 
-**Docker Compose (Recommended):**
+Eatinator provides pre-built Docker images via GitHub Container Registry (GHCR) for easy deployment without local building.
+
+**Quick Start with GHCR Images:**
 ```bash
-# Production deployment
+# 1. Login to GitHub Container Registry
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+
+# 2. Pull and start with pre-built images
+wget https://raw.githubusercontent.com/marcstae/eatinator/main/docker-compose.prod.yml
+docker compose -f docker-compose.prod.yml up -d
+
+# 3. Access the application
+# Frontend: http://localhost:8000
+# Backend API: http://localhost:5694
+```
+
+**Available Images:**
+- `ghcr.io/marcstae/eatinator/api:latest` - FastAPI backend
+- `ghcr.io/marcstae/eatinator/frontend:latest` - Nginx frontend
+- Tagged versions available: `v1.0.0`, `v1.1.0`, etc.
+
+**Authentication Setup:**
+1. **Create GitHub Personal Access Token:**
+   - Go to GitHub Settings → Developer settings → Personal access tokens
+   - Create token with `read:packages` scope
+   - Save token securely
+
+2. **Login on Deployment Server:**
+   ```bash
+   # Option 1: Use provided script
+   chmod +x scripts/ghcr-login.sh
+   export GITHUB_USERNAME=your-github-username
+   export GITHUB_TOKEN=your-personal-access-token
+   ./scripts/ghcr-login.sh
+
+   # Option 2: Interactive login
+   docker login ghcr.io
+   # Username: your-github-username
+   # Password: your-personal-access-token
+
+   # Option 3: Non-interactive (for CI/CD)
+   echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
+   ```
+
+3. **Deploy Application:**
+   ```bash
+   # Download production compose file
+   curl -O https://raw.githubusercontent.com/marcstae/eatinator/main/docker-compose.prod.yml
+   
+   # Start services
+   docker compose -f docker-compose.prod.yml up -d
+   
+   # Check status
+   docker compose -f docker-compose.prod.yml ps
+   ```
+
+**Local Development Build:**
+```bash
+# Build from source (original method)
 docker compose up -d
 
 # With custom configuration
@@ -201,6 +260,32 @@ python3 -m http.server 8000
 **Environment Variables:**
 - `PYTHONUNBUFFERED=1` - Enable logging in containers
 - Data persistence via mounted volumes in `/api/data`
+
+**Image Updates:**
+```bash
+# Pull latest images
+docker compose -f docker-compose.prod.yml pull
+
+# Restart with new images
+docker compose -f docker-compose.prod.yml up -d
+```
+
+**Troubleshooting GHCR Deployment:**
+```bash
+# Check if you're logged in
+docker info | grep Registry
+
+# Test image access
+docker pull ghcr.io/marcstae/eatinator/frontend:latest
+
+# View available tags
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/orgs/marcstae/packages/container/eatinator%2Ffrontend/versions
+
+# Check container logs
+docker compose -f docker-compose.prod.yml logs eatinator-api
+docker compose -f docker-compose.prod.yml logs eatinator-frontend
+```
 </details>
 
 ## 📚 Documentation
@@ -208,6 +293,42 @@ python3 -m http.server 8000
 - **[DOCS.md](DOCS.md)** - Detailed setup and development guide
 - **[API Documentation](api/README_FASTAPI.md)** - Backend API reference
 - **[Contributing Guidelines](.github/CONTRIBUTING.md)** - Development workflow
+
+## 🚀 CI/CD & Automated Builds
+
+Eatinator uses GitHub Actions for automated building and deployment:
+
+### Docker Image Building
+- **Automatic builds** on push to `main` and `develop` branches
+- **Images pushed to** GitHub Container Registry (GHCR)
+- **Multi-architecture support** for amd64 and arm64
+
+### Available Images
+```bash
+# Latest stable (from main branch)
+ghcr.io/marcstae/eatinator/api:latest
+ghcr.io/marcstae/eatinator/frontend:latest
+
+# Development (from develop branch) 
+ghcr.io/marcstae/eatinator/api:develop
+ghcr.io/marcstae/eatinator/frontend:develop
+
+# Specific versions (tagged releases)
+ghcr.io/marcstae/eatinator/api:v1.0.0
+ghcr.io/marcstae/eatinator/frontend:v1.0.0
+```
+
+### Automated Releases
+- **Semantic versioning** based on conventional commits
+- **Automatic changelog** generation
+- **GitHub releases** with deployment assets
+- **Version tags** for Docker images
+
+### Deployment Workflow
+1. **Development**: Commit with conventional format → Push to `develop`
+2. **Testing**: Pull request → Automated builds and tests
+3. **Release**: Merge to `main` → Semantic release → Tagged Docker images
+4. **Production**: Deploy using pre-built images from GHCR
 
 ## 🤝 Contributing
 
@@ -375,11 +496,58 @@ This project is open source. See the repository for license details.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly (see testing checklist above)
-5. Submit a pull request
+We use conventional commits and semantic release for automated versioning. Please follow these guidelines:
+
+### Commit Message Format
+Use the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Types:**
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, missing semicolons, etc.)
+- `refactor:` - Code refactoring without feature changes
+- `test:` - Adding or modifying tests
+- `chore:` - Maintenance tasks, dependency updates
+
+**Examples:**
+```bash
+feat: add voting system for menu items
+fix: resolve image upload validation issue
+docs: update deployment instructions for GHCR
+chore: update FastAPI to v0.104.1
+```
+
+### Development Workflow
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes and test thoroughly**
+4. **Commit with conventional format**: `git commit -m 'feat: add amazing feature'`
+5. **Push to your fork**: `git push origin feature/amazing-feature`
+6. **Open a Pull Request**
+
+### Testing Checklist
+- [ ] Main app loads at `http://localhost:8000`
+- [ ] Demo works at `http://localhost:8000/demo.html`
+- [ ] Week navigation functions
+- [ ] Menu items display correctly
+- [ ] Voting system works (if backend enabled)
+- [ ] Image upload works (if backend enabled)
+- [ ] PWA installation prompts appear
+
+### Automated Releases
+- Semantic release automatically creates new versions based on commit messages
+- Breaking changes must include `BREAKING CHANGE:` in commit footer
+- Releases are triggered on pushes to `main` branch
 
 ## 📞 Support
 

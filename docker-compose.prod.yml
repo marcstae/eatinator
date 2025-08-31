@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Production deployment using pre-built images from GHCR
+# Use this file for deploying without building locally
+services:
+  eatinator-api:
+    image: ghcr.io/marcstae/eatinator/api:latest
+    container_name: eatinator-api
+    ports:
+      - "5694:5694"
+    volumes:
+      # Mount data directory for persistence
+      - ./api/data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5694/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Static file server for the frontend
+  eatinator-frontend:
+    image: ghcr.io/marcstae/eatinator/frontend:latest
+    container_name: eatinator-frontend
+    ports:
+      - "8000:80"
+    depends_on:
+      - eatinator-api
+    restart: unless-stopped
+
+networks:
+  default:
+    name: eatinator-network

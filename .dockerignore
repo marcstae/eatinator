@@ -1,0 +1,31 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+DOCS.md
+*.md
+
+# Development files
+.github/
+api/data/
+*.log
+.env
+.env.local
+
+# Build artifacts
+node_modules/
+.npm/
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
