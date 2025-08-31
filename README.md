@@ -30,9 +30,17 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
 
 ```
 .
+├── .github/
+│   └── workflows/        # CI/CD automation
+│       ├── build-and-push.yml    # Docker image builds
+│       ├── release.yml           # Semantic releases
+│       └── validate-commits.yml  # Commit validation
 ├── index.html           # Main application
-├── manifest.json        # PWA configuration
+├── manifest.json        # PWA configuration  
 ├── README.md           # This file
+├── DEPLOYMENT.md       # Production deployment guide
+├── Dockerfile.frontend # Frontend container
+├── docker-compose.yml  # Local development stack
 ├── styles/
 │   └── main.css        # Custom CSS styles
 ├── js/
@@ -50,6 +58,7 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
 └── api/                # Server-side features (optional)
     ├── README.md       # Server setup instructions
     ├── IMAGE_SETUP.md  # Image feature setup guide
+    ├── Dockerfile      # API container
     ├── votes.php       # Voting API
     └── images.php      # Image upload API
 ```
@@ -73,10 +82,16 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
    - Main app: `http://localhost:8000/`
    - Demo page: `http://localhost:8000/demo.html`
 
-### Server Features Setup (Optional)
+### Deployment Options
 
-For voting and image upload features, you'll need a PHP server. See the detailed setup guides:
+Choose your preferred deployment method:
 
+#### Option 1: Production Deployment with Pre-built Images
+Use GitHub Container Registry for easy deployment without building:
+- **[GHCR Deployment Guide](DEPLOYMENT.md)**: Deploy using pre-built Docker images
+
+#### Option 2: Local Development with Server Features
+For voting and image upload features, set up a local server:
 - **[API Setup](api/README.md)**: Complete Docker-based server setup
 - **[Image Upload Setup](api/IMAGE_SETUP.md)**: Photo feature configuration
 
@@ -198,11 +213,55 @@ This project is open source. See the repository for license details.
 
 ## 🤝 Contributing
 
+We use conventional commits for consistent release management.
+
+### Commit Message Format
+
+All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Types
+- **feat**: New features
+- **fix**: Bug fixes  
+- **docs**: Documentation changes
+- **style**: Code style changes (formatting, etc.)
+- **refactor**: Code refactoring
+- **perf**: Performance improvements
+- **test**: Adding or updating tests
+- **chore**: Maintenance tasks
+- **ci**: CI/CD changes
+- **build**: Build system changes
+
+#### Examples
+```bash
+feat: add menu caching for better performance
+fix(api): handle empty menu response gracefully  
+docs: update deployment instructions
+chore: update dependencies to latest versions
+```
+
+### Contributing Process
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Make your changes
-4. Test thoroughly (see testing checklist above)
-5. Submit a pull request
+4. Ensure commits follow conventional commit format
+5. Test thoroughly (see testing checklist above) 
+6. Submit a pull request
+
+### Automated Releases
+
+- Releases are automatically generated based on conventional commits
+- **feat**: triggers minor version bump
+- **fix**: triggers patch version bump
+- **BREAKING CHANGE**: triggers major version bump
 
 ## 📞 Support
 
