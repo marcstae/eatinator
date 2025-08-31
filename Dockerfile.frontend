@@ -1,0 +1,25 @@
+FROM nginx:alpine
+
+# Copy static files
+COPY index.html /usr/share/nginx/html/
+COPY demo.html /usr/share/nginx/html/
+COPY manifest.json /usr/share/nginx/html/
+COPY js/ /usr/share/nginx/html/js/
+COPY styles/ /usr/share/nginx/html/styles/
+COPY icons/ /usr/share/nginx/html/icons/
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Remove default nginx configuration
+RUN rm /etc/nginx/conf.d/default.conf.bak 2>/dev/null || true
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
