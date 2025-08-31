@@ -1,7 +1,7 @@
 // Demo-specific functionality for image upload demo
 
-// Set current date for demo (can be overridden) - Define this first
-let currentDate = new Date().toISOString().split('T')[0];
+// Override current date for demo if needed (uses existing currentDate from state.js)
+// let currentDate = new Date().toISOString().split('T')[0];  // Commented out to avoid redeclaration
 
 // Demo menu data
 const demoMenuItems = [

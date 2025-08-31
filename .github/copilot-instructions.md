@@ -15,28 +15,42 @@ Eatinator is a Progressive Web App (PWA) that displays daily lunch menus from th
 
 ### Application Architecture
 - **No Build System Required**: Static HTML/JS/CSS files served directly
-- **No Dependencies**: Uses CDN-loaded Tailwind CSS (`https://cdn.tailwindcss.com`)
-- **Main Application**: `index.html` (1,228 lines) - core menu display functionality
-- **Demo Application**: `demo.html` (354 lines) - image upload feature demonstration
+- **Tailwind CSS**: Uses CDN with local fallback (`styles/tailwind-fallback.css`) for testing
+- **Main Application**: `index.html` (115 lines) - clean HTML structure with modular JS
+- **Demo Application**: `demo.html` (30 lines) - image upload feature demonstration
+- **Modular JavaScript**: Organized into focused modules in `/js/` directory
 - **PWA Configuration**: `manifest.json` and comprehensive icon set in `/icons/`
 - **Optional APIs**: PHP scripts in `/api/` for voting and image upload features
 
 ### File Structure Overview
 ```
 .
-├── index.html          # Main Eatinator application
-├── demo.html           # Image upload demo
+├── index.html          # Main Eatinator application (115 lines)
+├── demo.html           # Image upload demo (30 lines)
 ├── manifest.json       # PWA configuration
-├── README.md           # Project documentation
+├── README.md           # Main project documentation
+├── DOCS.md             # Detailed technical documentation
+├── styles/
+│   ├── main.css        # Custom application styles
+│   └── tailwind-fallback.css  # Local Tailwind fallback for testing
+├── js/                 # Modular JavaScript architecture
+│   ├── app.js          # Application initialization
+│   ├── config.js       # Configuration and Tailwind setup
+│   ├── state.js        # Application state management
+│   ├── menu.js         # Menu data fetching and display
+│   ├── navigation.js   # Week/day navigation
+│   ├── voting.js       # Voting system functionality
+│   ├── images.js       # Image upload and display
+│   └── demo.js         # Demo-specific functionality
 ├── icons/              # PWA icons (21 different sizes)
 │   ├── favicon.ico
 │   ├── favicon-*.png   # Multiple sizes for different devices
 │   └── browserconfig.xml
 └── api/                # Optional server-side features
-    ├── votes.php       # Voting API
-    ├── images.php      # Image upload API
     ├── README.md       # Server setup instructions
     ├── IMAGE_SETUP.md  # Image feature setup
+    ├── votes.php       # Voting API
+    ├── images.php      # Image upload API
     └── .gitignore      # Excludes runtime data files
 ```
 
@@ -74,16 +88,21 @@ Eatinator is a Progressive Web App (PWA) that displays daily lunch menus from th
 ## Common Tasks
 
 ### Frequently Referenced Files
-- **Primary Application Logic**: All in `index.html` (embedded JavaScript)
-- **Styling**: Tailwind CSS classes throughout HTML, custom CSS in `<style>` blocks
-- **Configuration**: `manifest.json` for PWA settings
-- **Documentation**: `README.md`, `api/README.md`, `api/IMAGE_SETUP.md`
+- **Primary Application Logic**: Modularized in `/js/` directory
+- **Main Entry Point**: `index.html` (115 lines, clean HTML structure)
+- **Demo Page**: `demo.html` (30 lines, image upload demonstration)
+- **Styling**: Tailwind CSS classes + custom CSS in `styles/main.css`
+- **Local Testing**: `styles/tailwind-fallback.css` for blocked CDN scenarios
+- **Configuration**: `manifest.json` for PWA settings, `js/config.js` for app settings
+- **Documentation**: `README.md` (user-facing), `DOCS.md` (technical details)
 
 ### Making Code Changes
-- **Frontend Changes**: Edit `index.html` or `demo.html` directly
+- **Frontend Changes**: Edit modular files in `/js/` directory or HTML files directly
+- **Styling**: Modify `styles/main.css` or Tailwind classes in HTML
 - **PWA Settings**: Modify `manifest.json`
 - **Icons**: Add/modify files in `icons/` directory
 - **Server Features**: Edit PHP files in `api/` directory (requires PHP server)
+- **Configuration**: Update `js/config.js` for feature toggles and API endpoints
 
 ### Testing Changes
 - Restart server after file changes: Stop current server, run `python3 -m http.server 8000`
@@ -116,6 +135,7 @@ Eatinator is a Progressive Web App (PWA) that displays daily lunch menus from th
    - Caused by blocked CDN access
    - Expected in sandboxed environments
    - Application still functions with basic styling
+   - For testing: Use local fallback by adding `<link rel="stylesheet" href="styles/tailwind-fallback.css">` in HTML
 
 2. **"No menu available" Message**:
    - External API blocked or unavailable

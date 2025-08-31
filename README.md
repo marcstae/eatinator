@@ -73,12 +73,89 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
    - Main app: `http://localhost:8000/`
    - Demo page: `http://localhost:8000/demo.html`
 
-### Server Features Setup (Optional)
+<details>
+<summary><strong>📦 Docker Setup (Production)</strong></summary>
 
-For voting and image upload features, you'll need a PHP server. See the detailed setup guides:
+For production deployment with voting and image upload features, use the automated installation script:
+
+#### Prerequisites
+- **Ubuntu 24.04 LTS** (other versions may work but are not tested)
+- **Docker and Docker Compose** installed and running
+- **Git** for cloning the repository
+
+#### Install Docker
+```bash
+# Update package index
+sudo apt update
+
+# Install Docker
+sudo apt install -y docker.io docker-compose
+
+# Enable and start Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Add your user to docker group (requires logout/login)
+sudo usermod -aG docker $USER
+```
+
+#### Quick Installation
+```bash
+# Standard installation
+./install-eatinator.sh
+
+# Preview changes first (recommended)
+./install-eatinator.sh --dry-run
+
+# Custom installation path
+./install-eatinator.sh --install-path /opt/eatinator
+```
+
+#### What Gets Installed
+```
+~/nginx/lunchinator/                    # Default installation path
+├── nginx/
+│   └── site-confs/
+│       └── default.conf               # Nginx configuration
+├── php/
+│   └── php-local.ini                  # PHP configuration
+├── www/                               # Web root
+│   ├── index.html                     # Main application
+│   ├── manifest.json                  # PWA manifest
+│   ├── js/                           # JavaScript modules
+│   ├── styles/                       # CSS files
+│   ├── icons/                        # PWA icons
+│   └── api/                          # Server-side APIs
+│       ├── votes.php                 # Voting API
+│       ├── images.php                # Image upload API
+│       ├── votes_data/               # Vote storage
+│       └── images_data/              # Image storage
+└── cleanup.sh                        # Automated cleanup script
+```
+
+#### Verify Installation
+```bash
+# Check container status
+docker ps
+
+# Test voting API
+curl "http://localhost/api/votes.php?action=get&key=test_vote"
+
+# Test image upload API
+curl "http://localhost/api/images.php?key=test_image"
+```
+
+</details>
+
+<details>
+<summary><strong>🔧 Manual API Setup</strong></summary>
+
+For custom server setups, see the detailed setup guides:
 
 - **[API Setup](api/README.md)**: Complete Docker-based server setup
 - **[Image Upload Setup](api/IMAGE_SETUP.md)**: Photo feature configuration
+
+</details>
 
 ### Configuration
 
@@ -178,6 +255,54 @@ const MENU_CONFIG = {
 **Styling issues**
 - May occur if Tailwind CSS CDN is blocked
 - Core functionality still works with basic styling
+- For development testing, you can use the local fallback: `styles/tailwind-fallback.css`
+
+<details>
+<summary><strong>🔧 Docker Installation Issues</strong></summary>
+
+#### "Docker not found" Error
+```bash
+# Install Docker
+sudo apt update && sudo apt install docker.io
+
+# Start Docker service
+sudo systemctl start docker
+```
+
+#### "Permission denied" Error
+```bash
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Logout and login again, or use newgrp
+newgrp docker
+```
+
+#### API Tests Fail
+This is often normal if:
+- Using different ports (not 80/443)
+- Nginx container uses different port mapping
+- Test with your actual ports: `curl "http://localhost:YOUR_PORT/api/votes.php?action=get&key=test"`
+
+#### File Permission Issues
+```bash
+# Fix data directory permissions
+cd ~/nginx/lunchinator/www/api
+sudo chown -R 33:33 votes_data images_data
+sudo chmod -R 775 votes_data images_data
+```
+
+#### View Logs
+```bash
+# Check container logs
+docker logs lunchinator-php
+docker logs lunchinator-cleanup
+
+# Check nginx logs (if using linuxserver/nginx)
+docker logs Your-Nginx-Container-Name
+```
+
+</details>
 
 ## 🔒 Security
 

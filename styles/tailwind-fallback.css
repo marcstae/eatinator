@@ -1,0 +1,80 @@
+/* Basic Tailwind CSS-compatible styles for testing */
+/* This provides essential styling when CDN is blocked */
+
+/* Tailwind CSS compatibility layer */
+.container { max-width: 100%; margin: 0 auto; padding: 0 1rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.max-w-md { max-width: 28rem; }
+.text-center { text-align: center; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.font-bold { font-weight: 700; }
+.text-white { color: #ffffff; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.min-h-screen { min-height: 100vh; }
+
+/* Dark theme colors */
+.bg-ios-dark-1 { background-color: #000000; }
+.bg-ios-dark-2 { background-color: #1C1C1E; }
+.bg-ios-dark-3 { background-color: #2C2C2E; }
+.bg-ios-dark-4 { background-color: #3A3A3C; }
+.text-ios-gray-2 { color: #AEAEB2; }
+.text-ios-blue { color: #007AFF; }
+
+/* Card and button styles */
+.swiftui-card {
+    background: #2C2C2E;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.rounded-xl { border-radius: 0.75rem; }
+.p-4 { padding: 1rem; }
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-start { align-items: flex-start; }
+.flex-1 { flex: 1 1 0%; }
+.pr-3 { padding-right: 0.75rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.leading-tight { line-height: 1.25; }
+.font-semibold { font-weight: 600; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-2 { gap: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.rounded-full { border-radius: 9999px; }
+
+/* Responsive grid */
+.grid { display: grid; }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gap-1 { gap: 0.25rem; }
+.aspect-square { aspect-ratio: 1/1; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.object-cover { object-fit: cover; }
+.rounded-lg { border-radius: 0.5rem; }
+
+/* Button styles */
+.swiftui-button {
+    background: #3A3A3C;
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
+}
+
+.swiftui-button:hover {
+    background: #48484A;
+}
+
+/* Hide class */
+.hidden { display: none; }
