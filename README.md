@@ -33,12 +33,10 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
 ├── .github/
 │   └── workflows/        # CI/CD automation
 │       ├── build-and-push.yml    # Docker image builds
-│       ├── release.yml           # Semantic releases
-│       └── validate-commits.yml  # Commit validation
+│       └── release.yml           # Semantic releases
 ├── index.html           # Main application
 ├── manifest.json        # PWA configuration  
 ├── README.md           # This file
-├── DEPLOYMENT.md       # Production deployment guide
 ├── Dockerfile.frontend # Frontend container
 ├── docker-compose.yml  # Local development stack
 ├── styles/
@@ -88,7 +86,15 @@ Choose your preferred deployment method:
 
 #### Option 1: Production Deployment with Pre-built Images
 Use GitHub Container Registry for easy deployment without building:
-- **[GHCR Deployment Guide](DEPLOYMENT.md)**: Deploy using pre-built Docker images
+
+```bash
+# Login to GHCR (requires GitHub Personal Access Token)
+echo "YOUR_TOKEN" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+
+# Pull and run the latest images
+docker pull ghcr.io/marcstae/eatinator/frontend:latest
+docker run -d -p 8000:80 ghcr.io/marcstae/eatinator/frontend:latest
+```
 
 #### Option 2: Local Development with Server Features
 For voting and image upload features, set up a local server:
