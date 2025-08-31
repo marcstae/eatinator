@@ -1,5 +1,8 @@
 # Eatinator 🍽️
 
+[![Docker Build](https://github.com/marcstae/eatinator/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marcstae/eatinator/actions/workflows/docker-build.yml)
+[![Release](https://github.com/marcstae/eatinator/actions/workflows/release.yml/badge.svg)](https://github.com/marcstae/eatinator/actions/workflows/release.yml)
+
 A Progressive Web App (PWA) that displays daily lunch menus from the Eurest restaurant at Kaserne Bern. Built as a modern web application with FastAPI backend and static frontend.
 
 ## 🚀 Quick Start
@@ -206,12 +209,18 @@ docker compose -f docker-compose.prod.yml up -d
 
 2. **Login on Deployment Server:**
    ```bash
-   # Option 1: Interactive login
+   # Option 1: Use provided script
+   chmod +x scripts/ghcr-login.sh
+   export GITHUB_USERNAME=your-github-username
+   export GITHUB_TOKEN=your-personal-access-token
+   ./scripts/ghcr-login.sh
+
+   # Option 2: Interactive login
    docker login ghcr.io
    # Username: your-github-username
    # Password: your-personal-access-token
 
-   # Option 2: Non-interactive (for CI/CD)
+   # Option 3: Non-interactive (for CI/CD)
    echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
    ```
 
@@ -259,6 +268,23 @@ docker compose -f docker-compose.prod.yml pull
 
 # Restart with new images
 docker compose -f docker-compose.prod.yml up -d
+```
+
+**Troubleshooting GHCR Deployment:**
+```bash
+# Check if you're logged in
+docker info | grep Registry
+
+# Test image access
+docker pull ghcr.io/marcstae/eatinator/frontend:latest
+
+# View available tags
+curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/orgs/marcstae/packages/container/eatinator%2Ffrontend/versions
+
+# Check container logs
+docker compose -f docker-compose.prod.yml logs eatinator-api
+docker compose -f docker-compose.prod.yml logs eatinator-frontend
 ```
 </details>
 
