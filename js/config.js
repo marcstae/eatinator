@@ -1,26 +1,31 @@
-// Tailwind CSS configuration
-tailwind.config = {
-    darkMode: 'class',
-    theme: {
-        extend: {
-            colors: {
-                'ios-blue': '#007AFF',
-                'ios-gray': '#8E8E93',
-                'ios-gray-2': '#AEAEB2',
-                'ios-gray-3': '#C7C7CC',
-                'ios-gray-4': '#D1D1D6',
-                'ios-gray-5': '#E5E5EA',
-                'ios-gray-6': '#F2F2F7',
-                'ios-dark-1': '#000000',
-                'ios-dark-2': '#1C1C1E',
-                'ios-dark-3': '#2C2C2E',
-                'ios-dark-4': '#3A3A3C',
-                'ios-dark-5': '#48484A',
-                'ios-dark-6': '#636366'
+// Tailwind CSS configuration (with fallback if CDN fails)
+try {
+    tailwind.config = {
+        darkMode: 'class',
+        theme: {
+            extend: {
+                colors: {
+                    'ios-blue': '#007AFF',
+                    'ios-gray': '#8E8E93',
+                    'ios-gray-2': '#AEAEB2',
+                    'ios-gray-3': '#C7C7CC',
+                    'ios-gray-4': '#D1D1D6',
+                    'ios-gray-5': '#E5E5EA',
+                    'ios-gray-6': '#F2F2F7',
+                    'ios-dark-1': '#000000',
+                    'ios-dark-2': '#1C1C1E',
+                    'ios-dark-3': '#2C2C2E',
+                    'ios-dark-4': '#3A3A3C',
+                    'ios-dark-5': '#48484A',
+                    'ios-dark-6': '#636366'
+                }
             }
         }
-    }
-};
+    };
+} catch (e) {
+    // Tailwind not loaded, configuration will be handled by fallback CSS
+    console.log('Tailwind configuration skipped (CDN not available)');
+}
 
 // Application configuration constants
 const VOTE_TYPES = {
