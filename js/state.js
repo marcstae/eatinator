@@ -30,3 +30,8 @@ let currentCategory = getDefaultMealCategory(); // Auto-select based on time
 let currentWeek = Math.ceil(((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 + 1) / 7);
 let currentYear = new Date().getFullYear();
 let menuData = null;
+
+// UwU mode state (hidden feature)
+let uwuModeEnabled = localStorage.getItem('uwuModeEnabled') === 'true';
+let titleClickCount = 0;
+let titleClickTimeout = null;

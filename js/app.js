@@ -2,6 +2,11 @@
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize UwU mode if previously enabled
+    if (uwuModeEnabled) {
+        document.body.classList.add('uwu-mode');
+    }
+    
     generateWeekDays();
     updateWeekLabel();
     

@@ -218,12 +218,19 @@ function createMenuItemHtml(item) {
     
     const priceHtml = price > 0 ? `<span class="price-badge text-xs px-3 py-1 rounded-full">CHF ${price.toFixed(2)}</span>` : '';
     
-    // Menu type badge (Menu, Vegi, Hit, etc.)
-    const menuTypeBadge = `<span class="menu-type-badge text-xs px-2 py-1 rounded-full">${menulineLabel}</span>`;
+    // Menu type badge (Menu, Vegi, Hit, etc.) - with UwU transformation
+    const displayMenulineLabel = uwuifyText(menulineLabel);
+    const menuTypeBadge = `<span class="menu-type-badge text-xs px-2 py-1 rounded-full">${displayMenulineLabel}</span>`;
     
-    // Create dietary badges with different colors
+    // Create dietary badges with different colors - with UwU transformation
     const dietaryHtml = dietaryInfo.length > 0 ? 
-        dietaryInfo.map(info => `<span class="${info.colorClass} text-xs px-2 py-1 rounded-full mr-2">${info.label}</span>`).join('') : '';
+        dietaryInfo.map(info => {
+            const displayLabel = uwuifyText(info.label);
+            return `<span class="${info.colorClass} text-xs px-2 py-1 rounded-full mr-2">${displayLabel}</span>`;
+        }).join('') : '';
+
+    // Apply UwU transformation to dish name
+    const displayDishName = uwuifyText(dishName);
 
     // Generate voting HTML if voting is active
     const votingHtml = generateVotingHtml(dishName, menulineLabel);
@@ -232,9 +239,9 @@ function createMenuItemHtml(item) {
     const imageHtml = generateImageHtml(dishName, menulineLabel);
 
     return `
-        <div class="swiftui-card p-4 rounded-xl ${votingHtml || imageHtml ? '' : 'swiftui-button'}" ${votingHtml || imageHtml ? '' : `onclick="showItemDetails('${dishName}', '${menulineLabel}')"`}>
+        <div class="swiftui-card p-4 rounded-xl ${votingHtml || imageHtml ? '' : 'swiftui-button'}" ${votingHtml || imageHtml ? '' : `onclick="showItemDetails('${dishName.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}', '${menulineLabel.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')"`}>
             <div class="flex justify-between items-start mb-2">
-                <h3 class="font-semibold text-white flex-1 pr-3 text-lg leading-tight">${dishName}</h3>
+                <h3 class="font-semibold text-white flex-1 pr-3 text-lg leading-tight">${displayDishName}</h3>
                 ${priceHtml}
             </div>
             <div class="flex flex-wrap gap-2 mb-3">
@@ -249,8 +256,10 @@ function createMenuItemHtml(item) {
 
 // Show item details
 function showItemDetails(dishName, menuType) {
-    // Create a simple modal-like alert for now
-    const message = `${dishName}\n\nType: ${menuType}`;
+    // Create a simple modal-like alert for now - with UwU transformation
+    const displayDishName = uwuifyText(dishName);
+    const displayMenuType = uwuifyText(menuType);
+    const message = `${displayDishName}\n\nType: ${displayMenuType}`;
     
     // For iOS, we can create a more native-looking modal
     if (window.confirm(message)) {
