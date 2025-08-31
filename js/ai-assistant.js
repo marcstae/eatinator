@@ -6,6 +6,12 @@ const AI_CONFIG = {
     // Multiple API endpoints to try (fallback approach)
     apiEndpoints: [
         {
+            url: 'https://mlvoca.com/api/generate',
+            model: 'deepseek-r1:1.5b',
+            headers: { 'Content-Type': 'application/json' },
+            isOllama: true
+        },
+        {
             url: 'https://api.pawan.krd/cosmosrp/v1/chat/completions',
             model: 'gpt-3.5-turbo',
             headers: { 'Authorization': 'Bearer pk-' }
@@ -106,14 +112,22 @@ function createAiFab() {
     
     const fab = document.createElement('button');
     fab.id = 'aiFab';
-    fab.className = 'fixed bottom-20 right-4 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg z-40 flex items-center justify-center swiftui-button transition-all duration-300';
+    fab.className = 'fixed bottom-6 right-4 w-12 h-12 bg-gradient-to-tr from-ios-blue to-blue-500 text-white rounded-full shadow-xl z-40 flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-2xl active:scale-95';
+    fab.style.background = 'linear-gradient(135deg, #007AFF 0%, #0056CC 100%)';
+    fab.style.boxShadow = '0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2)';
     fab.innerHTML = `
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z"/>
         </svg>
     `;
     fab.onclick = toggleAiChat;
     fab.title = getLocalizedText('ai_assistant');
+    
+    // Add pulsing animation to attract attention initially
+    fab.style.animation = 'pulse 2s infinite';
+    setTimeout(() => {
+        fab.style.animation = 'none';
+    }, 6000);
     
     document.body.appendChild(fab);
     
@@ -249,39 +263,48 @@ function createAiChatInterface() {
     const chatContainer = document.createElement('div');
     chatContainer.id = 'aiChatContainer';
     chatContainer.className = `fixed inset-x-0 bottom-0 bg-ios-dark-2 border-t border-ios-dark-4 transform transition-transform duration-300 z-30 ${aiChatVisible ? 'translate-y-0' : 'translate-y-full'}`;
-    chatContainer.style.height = '60vh';
+    chatContainer.style.height = '40vh'; // Reduced from 60vh to 40vh for less screen usage
+    chatContainer.style.borderRadius = '16px 16px 0 0';
+    chatContainer.style.boxShadow = '0 -4px 20px rgba(0, 0, 0, 0.3)';
     
     chatContainer.innerHTML = `
         <div class="flex flex-col h-full">
-            <!-- Chat Header -->
-            <div class="flex justify-between items-center p-4 border-b border-ios-dark-4">
+            <!-- Chat Header with minimize button -->
+            <div class="flex justify-between items-center p-3 border-b border-ios-dark-4 bg-ios-dark-1 rounded-t-2xl">
                 <h3 class="text-lg font-semibold text-white">${getLocalizedText('ai_assistant')}</h3>
-                <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="minimizeAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                        </svg>
+                    </button>
+                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             
             <!-- Chat Messages -->
-            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-3 space-y-2">
                 <!-- Messages will be added here -->
             </div>
             
             <!-- Chat Input -->
-            <div class="p-4 border-t border-ios-dark-4">
+            <div class="p-3 border-t border-ios-dark-4 bg-ios-dark-1">
                 <div class="flex space-x-2">
                     <input 
                         type="text" 
                         id="aiChatInput" 
                         placeholder="${getLocalizedText('ask_about_menu')}"
-                        class="flex-1 bg-ios-dark-3 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ios-blue"
+                        class="flex-1 bg-ios-dark-3 text-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ios-blue placeholder-ios-gray-2"
                         onkeypress="handleChatInputKeyPress(event)"
                     >
                     <button 
                         onclick="sendAiMessage()" 
-                        class="bg-ios-blue text-white px-4 py-3 rounded-lg swiftui-button">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="bg-gradient-to-r from-ios-blue to-blue-500 text-white px-3 py-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                         </svg>
                     </button>
@@ -298,6 +321,51 @@ function createAiChatInterface() {
     }
 }
 
+// Minimize AI chat to a smaller compact view
+function minimizeAiChat() {
+    const chatContainer = document.getElementById('aiChatContainer');
+    if (chatContainer) {
+        chatContainer.style.height = '120px';
+        chatContainer.innerHTML = `
+            <div class="flex items-center justify-between p-4 bg-ios-dark-1 rounded-t-2xl h-full">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-tr from-ios-blue to-blue-500 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-white text-sm font-medium">${getLocalizedText('ai_assistant')}</div>
+                        <div class="text-ios-gray-2 text-xs">${getLocalizedText('tap_to_expand')}</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="expandAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7l4-4m0 0l4 4m-4-4v18"/>
+                        </svg>
+                    </button>
+                    <button onclick="toggleAiChat()" class="text-ios-gray hover:text-white transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Expand AI chat back to full view
+function expandAiChat() {
+    // Recreate the full chat interface
+    const chatContainer = document.getElementById('aiChatContainer');
+    if (chatContainer) {
+        chatContainer.remove();
+    }
+    createAiChatInterface();
+}
+
 // Toggle AI chat visibility
 function toggleAiChat() {
     aiChatVisible = !aiChatVisible;
@@ -306,10 +374,16 @@ function toggleAiChat() {
     
     if (aiChatVisible) {
         chatContainer.classList.remove('translate-y-full');
-        fab.style.opacity = '0.7';
+        if (fab) {
+            fab.style.opacity = '0.7';
+            fab.style.transform = 'scale(0.9)';
+        }
     } else {
         chatContainer.classList.add('translate-y-full');
-        fab.style.opacity = '1';
+        if (fab) {
+            fab.style.opacity = '1';
+            fab.style.transform = 'scale(1)';
+        }
     }
     
     saveAiSettings();
@@ -396,23 +470,35 @@ async function callAiApi(message, context) {
         const endpoint = AI_CONFIG.apiEndpoints[i];
         
         try {
-            const payload = {
-                model: endpoint.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: message
-                    }
-                ],
-                max_tokens: AI_CONFIG.maxTokens,
-                temperature: AI_CONFIG.temperature
-            };
+            let payload, response;
             
-            const response = await fetch(endpoint.url, {
+            if (endpoint.isOllama) {
+                // Ollama-style API (mlvoca.com)
+                payload = {
+                    model: endpoint.model,
+                    prompt: `${systemPrompt}\n\nUser: ${message}\nAssistant:`,
+                    stream: false
+                };
+            } else {
+                // OpenAI-style API
+                payload = {
+                    model: endpoint.model,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: systemPrompt
+                        },
+                        {
+                            role: 'user',
+                            content: message
+                        }
+                    ],
+                    max_tokens: AI_CONFIG.maxTokens,
+                    temperature: AI_CONFIG.temperature
+                };
+            }
+            
+            response = await fetch(endpoint.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -424,9 +510,16 @@ async function callAiApi(message, context) {
             
             if (response.ok) {
                 const data = await response.json();
-                const aiResponse = data.choices?.[0]?.message?.content;
+                let aiResponse;
+                
+                if (endpoint.isOllama) {
+                    aiResponse = data.response;
+                } else {
+                    aiResponse = data.choices?.[0]?.message?.content;
+                }
+                
                 if (aiResponse) {
-                    return aiResponse;
+                    return aiResponse.trim();
                 }
             }
         } catch (error) {
@@ -444,27 +537,39 @@ function getSystemPrompt(context) {
     const language = context.language;
     
     if (language === 'de') {
-        return `Du bist ein hilfsbreiter Assistent für das Restaurant "${context.restaurant}". 
+        return `Du bist ein hilfsbreiter Menü-Berater für das Restaurant "${context.restaurant}". 
         
 Heutiges Datum: ${context.date}
 Aktuelle Zeit: ${context.time}
 Aktuelle Kategorie: ${context.category}
 
 Verfügbare Menüs heute:
-${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})`).join('\n')}
+${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})${item.dietary ? ` - Allergene: ${item.dietary}` : ''}`).join('\n')}
 
-Beantworte Fragen über das heutige Menü, erkläre Gerichte, gib Empfehlungen und hilf bei Ernährungsfragen. Sei freundlich und informativ. Antworte auf Deutsch.`;
+Deine Hauptaufgaben:
+1. EMPFEHLUNGEN geben: Welches Gericht sollte jemand wählen basierend auf Vorlieben
+2. ALLERGIE-INFORMATIONEN: Hilf bei Fragen zu Gluten, Laktose, Nüssen, etc.
+3. ERNÄHRUNGSBERATUNG: Vegetarische/vegane Optionen vorschlagen
+4. GESCHMACKS-TIPPS: Beschreibe wie Gerichte schmecken könnten
+
+Sei kurz, freundlich und fokussiere dich auf praktische Empfehlungen. Antworte auf Deutsch.`;
     } else {
-        return `You are a helpful assistant for the restaurant "${context.restaurant}".
+        return `You are a helpful menu advisor for the restaurant "${context.restaurant}".
         
 Today's date: ${context.date}
 Current time: ${context.time}
 Current category: ${context.category}
 
 Available menu items today:
-${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})`).join('\n')}
+${context.items.map(item => `- ${item.name} (${item.type}${item.price ? `, ${item.price}` : ''})${item.dietary ? ` - Allergens: ${item.dietary}` : ''}`).join('\n')}
 
-Answer questions about today's menu, explain dishes, provide recommendations, and help with dietary questions. Be friendly and informative.`;
+Your main tasks:
+1. RECOMMENDATIONS: Suggest which dish someone should choose based on preferences
+2. ALLERGY INFORMATION: Help with questions about gluten, lactose, nuts, etc.
+3. DIETARY ADVICE: Suggest vegetarian/vegan options  
+4. TASTE GUIDANCE: Describe how dishes might taste
+
+Be concise, friendly, and focus on practical recommendations rather than just listing what's available.`;
     }
 }
 
@@ -477,12 +582,12 @@ function addAiMessage(role, content) {
     messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'} ai-message-fade-in`;
     
     messageDiv.innerHTML = `
-        <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+        <div class="max-w-xs lg:max-w-sm px-3 py-2 rounded-2xl text-sm ${
             isUser 
-                ? 'bg-ios-blue text-white' 
-                : 'bg-ios-dark-3 text-ios-gray-2'
+                ? 'bg-gradient-to-r from-ios-blue to-blue-500 text-white shadow-md' 
+                : 'bg-ios-dark-3 text-ios-gray-2 border border-ios-dark-4'
         }">
-            <p class="text-sm whitespace-pre-wrap">${content}</p>
+            <p class="whitespace-pre-wrap leading-relaxed">${content}</p>
         </div>
     `;
     
@@ -535,7 +640,8 @@ function getLocalizedText(key) {
             language: 'Language',
             auto_detect: 'Auto-detect',
             cancel: 'Cancel',
-            save: 'Save'
+            save: 'Save',
+            tap_to_expand: 'Tap to expand'
         },
         de: {
             ai_assistant: 'KI-Assistent',
@@ -547,7 +653,8 @@ function getLocalizedText(key) {
             language: 'Sprache',
             auto_detect: 'Automatisch erkennen',
             cancel: 'Abbrechen',
-            save: 'Speichern'
+            save: 'Speichern',
+            tap_to_expand: 'Zum Erweitern tippen'
         },
         fr: {
             ai_assistant: 'Assistant IA',
@@ -559,7 +666,8 @@ function getLocalizedText(key) {
             language: 'Langue',
             auto_detect: 'Détection automatique',
             cancel: 'Annuler',
-            save: 'Sauvegarder'
+            save: 'Sauvegarder',
+            tap_to_expand: 'Toucher pour agrandir'
         }
     };
     
@@ -589,49 +697,68 @@ function generateFallbackResponse(message, context) {
     // Detect language dynamically from the user's message
     const lang = detectMessageLanguage(message);
     
-    // Simple keyword-based responses
-    if (lowerMessage.includes('menu') || lowerMessage.includes('today') || lowerMessage.includes('available')) {
-        if (context.items.length === 0) {
-            return lang === 'de' 
-                ? `Heute ist ${context.date} und es ist gerade ${context.category}szeit. Leider ist im Moment kein Menü verfügbar.`
-                : `Today is ${context.date} and it's ${context.category} time. Unfortunately, no menu is currently available.`;
-        } else {
-            const itemList = context.items.map(item => `• ${item.name}${item.price ? ` (${item.price})` : ''}`).join('\n');
-            return lang === 'de'
-                ? `Heute ist ${context.date} und hier ist das ${context.category} Menü:\n\n${itemList}\n\nWas möchtest du über diese Gerichte wissen?`
-                : `Today is ${context.date} and here's the ${context.category} menu:\n\n${itemList}\n\nWhat would you like to know about these dishes?`;
-        }
-    }
-    
-    if (lowerMessage.includes('recommend') || lowerMessage.includes('empfehlen') || lowerMessage.includes('suggest')) {
+    // Focus on recommendations and suggestions
+    if (lowerMessage.includes('recommend') || lowerMessage.includes('empfehlen') || lowerMessage.includes('suggest') || lowerMessage.includes('was soll ich')) {
         if (context.items.length > 0) {
             const randomItem = context.items[Math.floor(Math.random() * context.items.length)];
             return lang === 'de'
-                ? `Ich empfehle dir heute "${randomItem.name}" - das sieht besonders lecker aus!`
-                : `I recommend "${randomItem.name}" today - it looks particularly delicious!`;
+                ? `Ich empfehle dir heute "${randomItem.name}" - das ist eine gute Wahl! ${randomItem.dietary ? `Bitte beachte: ${randomItem.dietary}` : 'Informiere dich über Allergene bei der Ausgabe.'}`
+                : `I recommend "${randomItem.name}" today - it's a great choice! ${randomItem.dietary ? `Please note: ${randomItem.dietary}` : 'Check for allergens at the serving counter.'}`;
+        } else {
+            return lang === 'de'
+                ? 'Heute ist leider kein Menü verfügbar. Ich empfehle, morgen wiederzukommen oder nach Alternativen im Restaurant zu fragen.'
+                : 'Unfortunately, no menu is available today. I recommend coming back tomorrow or asking for alternatives at the restaurant.';
         }
     }
     
-    if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('preis')) {
+    // Handle allergy and dietary questions
+    if (lowerMessage.includes('allerg') || lowerMessage.includes('gluten') || lowerMessage.includes('lactose') || lowerMessage.includes('laktose') || lowerMessage.includes('vegetarian') || lowerMessage.includes('vegan') || lowerMessage.includes('vegetarisch')) {
+        const dietaryItems = context.items.filter(item => item.dietary);
+        if (dietaryItems.length > 0) {
+            const allergyInfo = dietaryItems.map(item => `• ${item.name}: ${item.dietary}`).join('\n');
+            return lang === 'de'
+                ? `Hier sind die Allergie-Informationen für heute:\n\n${allergyInfo}\n\nFrage gerne nach, wenn du spezifische Allergien hast!`
+                : `Here's the allergy information for today:\n\n${allergyInfo}\n\nFeel free to ask if you have specific allergies!`;
+        } else {
+            return lang === 'de'
+                ? 'Für detaillierte Allergie-Informationen wende dich bitte direkt an das Personal im Restaurant. Sie können dir bei spezifischen Fragen zu Gluten, Laktose, Nüssen und anderen Allergenen helfen.'
+                : 'For detailed allergy information, please contact the restaurant staff directly. They can help you with specific questions about gluten, lactose, nuts, and other allergens.';
+        }
+    }
+    
+    // Handle general menu questions with focus on guidance
+    if (lowerMessage.includes('menu') || lowerMessage.includes('today') || lowerMessage.includes('available') || lowerMessage.includes('essen') || lowerMessage.includes('mittagessen')) {
+        if (context.items.length === 0) {
+            return lang === 'de' 
+                ? `Heute ist ${context.date} und es ist gerade ${context.category}zeit. Leider ist im Moment kein Menü verfügbar. Kann ich dir bei etwas anderem helfen?`
+                : `Today is ${context.date} and it's ${context.category} time. Unfortunately, no menu is currently available. Can I help you with something else?`;
+        } else {
+            const recommendation = context.items[Math.floor(Math.random() * context.items.length)];
+            return lang === 'de'
+                ? `Heute gibt es ${context.items.length} Optionen für ${context.category}. Mein Tipp: "${recommendation.name}" - das klingt besonders gut! Möchtest du eine Empfehlung basierend auf deinen Vorlieben?`
+                : `Today there are ${context.items.length} options for ${context.category}. My suggestion: "${recommendation.name}" - that sounds particularly good! Would you like a recommendation based on your preferences?`;
+        }
+    }
+    
+    // Handle price questions
+    if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('preis') || lowerMessage.includes('kosten')) {
         const itemsWithPrices = context.items.filter(item => item.price);
         if (itemsWithPrices.length > 0) {
-            const priceInfo = itemsWithPrices.map(item => `• ${item.name}: ${item.price}`).join('\n');
+            const cheapest = itemsWithPrices.reduce((min, item) => {
+                const price = parseFloat(item.price.replace(/[^\d.,]/g, '').replace(',', '.'));
+                const minPrice = parseFloat(min.price.replace(/[^\d.,]/g, '').replace(',', '.'));
+                return price < minPrice ? item : min;
+            });
             return lang === 'de'
-                ? `Hier sind die Preise für heute:\n\n${priceInfo}`
-                : `Here are today's prices:\n\n${priceInfo}`;
+                ? `Der günstigste Option heute ist "${cheapest.name}" für ${cheapest.price}. Soll ich dir alle Preise zeigen oder eine Empfehlung in deinem Budget geben?`
+                : `The most affordable option today is "${cheapest.name}" for ${cheapest.price}. Should I show you all prices or give you a recommendation within your budget?`;
         }
     }
     
-    if (lowerMessage.includes('vegetarian') || lowerMessage.includes('vegan') || lowerMessage.includes('vegetarisch')) {
-        return lang === 'de'
-            ? 'Für Informationen über vegetarische oder vegane Optionen schaue bitte bei den Menü-Kennzeichnungen nach den entsprechenden Symbolen.'
-            : 'For vegetarian or vegan options, please look for the corresponding symbols in the menu item labels.';
-    }
-    
-    // Generic helpful response
+    // Generic helpful response focused on assistance
     return lang === 'de'
-        ? 'Entschuldigung, ich kann momentan nicht auf den KI-Service zugreifen. Du kannst mich nach dem heutigen Menü, Preisen, Empfehlungen oder vegetarischen Optionen fragen!'
-        : 'Sorry, I cannot access the AI service right now. You can ask me about today\'s menu, prices, recommendations, or vegetarian options!';
+        ? 'Ich helfe gerne bei Menü-Empfehlungen, Allergie-Fragen oder Ernährungsberatung! Was interessiert dich besonders?'
+        : 'I\'m happy to help with menu recommendations, allergy questions, or dietary advice! What interests you most?';
 }
 
 // Check if AI assistant is enabled
