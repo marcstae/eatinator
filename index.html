@@ -21,13 +21,72 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180x180.png">
 
     <!-- PWA manifest (Android/Chrome) -->
-    <link rel="manifest" href="/icons/manifest.json">
+    <link rel="manifest" href="/manifest.json">
 
     <!-- Windows tiles -->
     <meta name="msapplication-config" content="/icons/browserconfig.xml">
     <meta name="msapplication-TileColor" content="#ffffff">
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CSS with fallback -->
+    <script>
+        // Try to load Tailwind CSS from CDN, fallback to basic styles if it fails
+        const tailwindScript = document.createElement('script');
+        tailwindScript.src = 'https://cdn.tailwindcss.com';
+        tailwindScript.onerror = function() {
+            console.log('Tailwind CDN failed, using basic fallback styles');
+            // Add basic fallback styles for core functionality
+            const fallbackStyles = document.createElement('style');
+            fallbackStyles.innerHTML = `
+                .bg-ios-dark-1 { background-color: #000000; }
+                .bg-ios-dark-2 { background-color: #1C1C1E; }
+                .bg-ios-dark-3 { background-color: #2C2C2E; }
+                .bg-ios-dark-4 { background-color: #3A3A3C; }
+                .text-white { color: white; }
+                .text-ios-gray { color: #8E8E93; }
+                .text-ios-gray-2 { color: #AEAEB2; }
+                .text-ios-blue { color: #007AFF; }
+                .min-h-screen { min-height: 100vh; }
+                .p-4 { padding: 1rem; }
+                .px-4 { padding-left: 1rem; padding-right: 1rem; }
+                .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+                .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+                .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+                .text-center { text-align: center; }
+                .text-2xl { font-size: 1.5rem; }
+                .text-lg { font-size: 1.125rem; }
+                .text-sm { font-size: 0.875rem; }
+                .font-bold { font-weight: 700; }
+                .font-semibold { font-weight: 600; }
+                .font-medium { font-weight: 500; }
+                .rounded-lg { border-radius: 0.5rem; }
+                .rounded-xl { border-radius: 0.75rem; }
+                .flex { display: flex; }
+                .grid { display: grid; }
+                .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+                .gap-2 { gap: 0.5rem; }
+                .gap-3 { gap: 0.75rem; }
+                .sticky { position: sticky; }
+                .top-0 { top: 0; }
+                .z-50 { z-index: 50; }
+                .border-b { border-bottom-width: 1px; }
+                .mb-4 { margin-bottom: 1rem; }
+                .mt-1 { margin-top: 0.25rem; }
+                .swiftui-button { 
+                    background-color: #2C2C2E; 
+                    border: 1px solid #3A3A3C; 
+                    transition: all 0.2s ease;
+                }
+                .swiftui-button:hover { background-color: #3A3A3C; }
+                .swiftui-button.active { background-color: #007AFF; color: white; }
+                .swiftui-card { 
+                    background-color: #2C2C2E; 
+                    border: 1px solid #3A3A3C;
+                }
+            `;
+            document.head.appendChild(fallbackStyles);
+        };
+        document.head.appendChild(tailwindScript);
+    </script>
     <script src="js/config.js"></script>
     <link rel="stylesheet" href="styles/main.css">
 </head>

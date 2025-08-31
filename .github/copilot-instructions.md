@@ -1,189 +1,263 @@
 # Eatinator - PWA Menu Application
 
-Eatinator is a Progressive Web App (PWA) that displays daily lunch menus from the Eurest restaurant at Kaserne Bern. It scrapes menu data from unofficial APIs and falls back to HTML parsing when APIs are unavailable.
+Eatinator is a Progressive Web App (PWA) that displays daily lunch menus from the Eurest restaurant at Kaserne Bern. It features a modern FastAPI backend with SQLite database and a static frontend with modular JavaScript architecture.
 
 **ALWAYS reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.**
 
 ## Working Effectively
 
 ### Bootstrap and Run the Application
-- Start local development server:
-  - `cd /home/runner/work/eatinator/eatinator`
-  - `python3 -m http.server 8000` -- starts in ~3 seconds. NEVER CANCEL. Set timeout to 30+ seconds.
+
+**Option 1: Docker Compose (Recommended)**
+- Start complete environment: `cd /home/runner/work/eatinator/eatinator && docker compose up -d`
 - Access application at `http://localhost:8000/`
-- Access demo (image upload) at `http://localhost:8000/demo.html`
+- Access backend API at `http://localhost:5694/`
+- Health check: `http://localhost:5694/health`
+
+**Option 2: Development Mode**
+- Start dev environment: `cd /home/runner/work/eatinator/eatinator && ./start_dev.sh`
+- Access application at `http://localhost:8000/`
+- Backend on port 5694 with auto-reload
+
+**Option 3: Static Only (for frontend testing)**
+- Start simple server: `cd /home/runner/work/eatinator/eatinator && python3 -m http.server 8000`
+- Access application at `http://localhost:8000/`
+- Note: Backend features (voting, images) will be disabled
 
 ### Application Architecture
-- **No Build System Required**: Static HTML/JS/CSS files served directly
-- **No Dependencies**: Uses CDN-loaded Tailwind CSS (`https://cdn.tailwindcss.com`)
-- **Main Application**: `index.html` (1,228 lines) - core menu display functionality
-- **Demo Application**: `demo.html` (354 lines) - image upload feature demonstration
+
+- **Modern Stack**: FastAPI backend + Static frontend with zero build dependencies
+- **Database**: SQLite for persistence (replaces old JSON file storage)
+- **Styling**: Tailwind CSS from CDN with comprehensive fallback system
+- **Main Application**: `index.html` - core menu display functionality
+- **Demo Application**: `demo.html` - image upload feature demonstration
 - **PWA Configuration**: `manifest.json` and comprehensive icon set in `/icons/`
-- **Optional APIs**: PHP scripts in `/api/` for voting and image upload features
+- **Backend APIs**: FastAPI application in `/api/` for voting and image upload
 
 ### File Structure Overview
 ```
 .
 ├── index.html          # Main Eatinator application
 ├── demo.html           # Image upload demo
-├── manifest.json       # PWA configuration
-├── README.md           # Project documentation
+├── manifest.json       # PWA configuration  
+├── README.md           # Main documentation
+├── DOCS.md             # Detailed setup/development guide
+├── docker-compose.yml  # Complete environment setup
+├── start_dev.sh        # Development startup script
+├── proxy_server.py     # Development proxy server
+├── js/                 # JavaScript modules (modular architecture)
+│   ├── app.js          # Application initialization
+│   ├── config.js       # Configuration & Tailwind setup
+│   ├── state.js        # Application state management
+│   ├── menu.js         # Menu fetching & display
+│   ├── voting.js       # Voting system functionality
+│   ├── images.js       # Image upload & display
+│   ├── navigation.js   # Week/day navigation
+│   └── demo.js         # Demo page functionality
+├── styles/
+│   └── main.css        # Custom CSS styles
 ├── icons/              # PWA icons (21 different sizes)
 │   ├── favicon.ico
 │   ├── favicon-*.png   # Multiple sizes for different devices
 │   └── browserconfig.xml
-└── api/                # Optional server-side features
-    ├── votes.php       # Voting API
-    ├── images.php      # Image upload API
-    ├── README.md       # Server setup instructions
-    ├── IMAGE_SETUP.md  # Image feature setup
-    └── .gitignore      # Excludes runtime data files
+└── api/                # FastAPI backend
+    ├── main.py         # FastAPI application
+    ├── Dockerfile      # Backend container
+    ├── requirements.txt # Python dependencies
+    ├── README_FASTAPI.md # Backend API documentation
+    └── data/           # Runtime data (auto-created)
+        ├── eatinator.db # SQLite database
+        └── images/     # Uploaded images
 ```
 
 ## Validation
 
 ### CRITICAL: Always Test These Scenarios After Making Changes
-1. **Basic Application Loading**:
-   - Start server: `python3 -m http.server 8000`
-   - Open `http://localhost:8000/` in browser
-   - Verify: "Eurest Menu" title displays, week navigation works, day buttons are clickable
-   - Expected: Application shows current week with Mon-Fri buttons
 
-2. **Demo Functionality**:
-   - Open `http://localhost:8000/demo.html`
-   - Verify: Three food items display with "Add Photo" and "View Photos" buttons
-   - Expected: Dark-themed interface with sample menu items
+1. **Docker Compose Setup** (Primary):
+   - Start: `docker compose up -d`
+   - Check: `docker compose ps` (both services should be running)
+   - Test: Open `http://localhost:8000/` and verify app loads
+   - Test: Open `http://localhost:8000/demo.html` and verify demo works
+   - API: `curl http://localhost:5694/health` should return `{"status":"healthy"}`
 
-3. **PWA Configuration**:
-   - Check `manifest.json` is valid JSON: `curl -s http://localhost:8000/manifest.json | jq .`
-   - Verify icons exist: `ls icons/favicon-*.png | wc -l` should return >10
-   - **Note**: HTML references `/icons/manifest.json` but file is at `/manifest.json` (404 in console is expected)
+2. **Development Mode**:
+   - Start: `./start_dev.sh`
+   - Verify: Backend logs show FastAPI startup on port 5694
+   - Verify: Frontend proxy starts on port 8000
+   - Test: Application shows current week with Mon-Fri buttons
 
-4. **External Dependencies**:
-   - **Note**: Tailwind CSS loads from CDN - may fail in sandboxed environments
-   - **Note**: External menu API (clients.eurest.ch) typically blocked in development
-   - **Expected**: Application shows "No menu available" when API is blocked (this is normal)
-   - **Expected**: Console shows 404 for `/icons/manifest.json` (manifest is actually at root)
+3. **Frontend Functionality**:
+   - **Basic Loading**: "Eurest Menu" title displays, week navigation works
+   - **Demo**: Three sample food items with "Add Photo" and "View Photos" buttons
+   - **Responsive**: Works on mobile and desktop screen sizes
+   - **PWA**: Installation prompts appear in supporting browsers
 
-### Manual Testing Requirements
-- **ALWAYS** test both main application (`index.html`) and demo (`demo.html`) after changes
-- **ALWAYS** verify the PWA installation prompts work (if browser supports)
-- **ALWAYS** test responsive design by resizing browser window
-- Check browser console for JavaScript errors (some CDN blocking is expected)
+4. **Backend Features** (if enabled):
+   - **Voting**: Vote buttons work and persist across page reloads
+   - **Images**: Photo upload and gallery viewing functions
+   - **Database**: SQLite database created in `api/data/eatinator.db`
+
+5. **Fallback Behavior**:
+   - **CSS Fallback**: App still usable if Tailwind CDN fails (basic styles applied)
+   - **API Fallback**: Voting uses localStorage if backend unavailable
+   - **Menu Fallback**: Shows "No menu available" when external API blocked
+
+### Expected Development Environment Behavior
+
+- **External Menu API**: Typically blocked in development (shows "No menu available" - this is normal)
+- **Tailwind CSS**: May load from CDN or use fallback (both scenarios should work)
+- **Console Warnings**: Some 404s for external resources are expected in development
+- **Docker Networking**: Containers communicate via internal Docker network
 
 ## Common Tasks
 
 ### Frequently Referenced Files
-- **Primary Application Logic**: All in `index.html` (embedded JavaScript)
-- **Styling**: Tailwind CSS classes throughout HTML, custom CSS in `<style>` blocks
-- **Configuration**: `manifest.json` for PWA settings
-- **Documentation**: `README.md`, `api/README.md`, `api/IMAGE_SETUP.md`
+
+- **Frontend Logic**: Distributed across `/js/` modules for maintainability
+- **Styling**: Tailwind CSS classes + custom CSS in `styles/main.css`
+- **Configuration**: `docker-compose.yml` for environment, `js/config.js` for app settings
+- **Documentation**: `README.md` (overview), `DOCS.md` (detailed), `api/README_FASTAPI.md` (API)
 
 ### Making Code Changes
-- **Frontend Changes**: Edit `index.html` or `demo.html` directly
+
+- **Frontend Changes**: Edit HTML/CSS/JS files directly, refresh browser
+- **Backend Changes**: Edit `api/main.py`, restart container or use dev mode auto-reload
 - **PWA Settings**: Modify `manifest.json`
 - **Icons**: Add/modify files in `icons/` directory
-- **Server Features**: Edit PHP files in `api/` directory (requires PHP server)
+- **Configuration**: Update `docker-compose.yml` or `js/config.js`
 
 ### Testing Changes
-- Restart server after file changes: Stop current server, run `python3 -m http.server 8000`
-- **No Build Process**: Changes are immediately visible on page refresh
-- **No Linting**: No automated linting configured (static HTML/JS files)
-- **No Tests**: No automated test suite exists
+
+- **Docker**: `docker compose up --build` to rebuild after changes
+- **Development**: Changes visible immediately (frontend) or auto-reload (backend)
+- **No Build Process**: Direct file serving, changes are immediately available
+- **No Automated Tests**: Manual testing required (see validation checklist above)
 
 ## Development Environment
 
 ### Requirements
-- **Python 3**: For local HTTP server (`python3 -m http.server`)
+
+- **Docker & Docker Compose**: Primary deployment method
+- **Python 3.11+**: For local backend development
 - **Modern Browser**: Chrome, Firefox, Safari, or Edge with PWA support
-- **Optional**: PHP 7.4+ for server-side features (voting, image upload)
 
 ### External Dependencies
-- **Tailwind CSS**: Loaded from `https://cdn.tailwindcss.com`
-- **Eurest API**: `https://clients.eurest.ch/api/Menu/*` (unofficial, may be blocked)
-- **Fallback**: HTML scraping of restaurant website when API fails
 
-### Known Limitations in Development
-- **CDN Blocking**: Tailwind CSS may be blocked in sandboxed environments
-- **API Blocking**: External menu API typically blocked in development
-- **CORS Issues**: Some features require same-origin requests
-- **PHP Features**: Voting and image upload require PHP server setup
+- **Tailwind CSS**: Loaded from `https://cdn.tailwindcss.com` with local fallback
+- **Eurest API**: `https://clients.eurest.ch/api/Menu/*` (unofficial, often blocked)
+- **Fallback Behavior**: Application gracefully handles blocked external resources
+
+### Technology Stack
+
+- **Frontend**: Vanilla HTML/CSS/JavaScript (no framework dependencies)
+- **Backend**: FastAPI (Python) with SQLite database
+- **Deployment**: Docker Compose with nginx + uvicorn
+- **Development**: Local servers with proxy routing
 
 ## Troubleshooting
 
 ### Common Issues and Solutions
-1. **"tailwind is not defined" Error**:
-   - Caused by blocked CDN access
-   - Expected in sandboxed environments
-   - Application still functions with basic styling
+
+1. **Docker Compose Won't Start**:
+   - Check Docker is running: `docker --version`
+   - Clean rebuild: `docker compose down && docker compose up --build`
+   - Check logs: `docker compose logs`
 
 2. **"No menu available" Message**:
-   - External API blocked or unavailable
-   - This is normal behavior in development
+   - External API blocked or unavailable (normal in development)
    - Application correctly shows fallback message
+   - Backend may still work for voting/images
 
-3. **PWA Installation Not Working**:
+3. **Styling Issues**:
+   - Tailwind CDN blocked → Basic fallback styles automatically applied
+   - Application remains functional with reduced visual polish
+   - Check console for CSS loading errors
+
+4. **Backend API Errors**:
+   - Check health endpoint: `curl http://localhost:5694/health`
+   - Verify container running: `docker compose ps`
+   - Check logs: `docker compose logs api`
+
+5. **PWA Installation Not Working**:
    - Ensure serving over HTTP/HTTPS (not file://)
    - Check all required icons exist in `/icons/`
-   - Verify `manifest.json` is valid
-   - **Note**: HTML references `/icons/manifest.json` but file is at root `/manifest.json`
-
-4. **404 Error for `/icons/manifest.json`**:
-   - This is expected - manifest.json is in root directory, not icons/
-   - Application will still function, PWA features may be limited
-   - To fix: Move manifest.json to icons/ or update HTML reference
-
-5. **Server Won't Start**:
-   - Check port 8000 availability: `lsof -i :8000`
-   - Try different port: `python3 -m http.server 8001`
-   - Ensure running from correct directory
+   - Verify `manifest.json` is accessible at `/manifest.json`
+   - Test in different browsers (PWA support varies)
 
 ### Performance Expectations
-- **Server Start**: ~3 seconds
-- **Page Load**: <2 seconds (with CDN)
-- **Page Load**: 5-10 seconds (with CDN blocked, shows basic layout)
+
+- **Docker Startup**: 30-60 seconds for initial build, 10-15 seconds for subsequent starts
+- **Page Load**: 1-3 seconds (with CDN), 3-5 seconds (with fallback)
+- **API Response**: <100ms for local SQLite queries
 - **No Build Time**: Static files, no compilation needed
 
 ### File Modification Impact
-- **HTML Changes**: Immediate (refresh browser)
-- **Icon Changes**: May require cache clear/hard refresh
-- **Manifest Changes**: May require browser restart for PWA updates
 
-## Server-Side Features (Optional)
+- **Frontend Changes**: Immediate (refresh browser)
+- **Backend Changes**: Requires container restart or dev mode auto-reload
+- **Docker Config**: Requires `docker compose up --build`
+- **Icon/Manifest Changes**: May require cache clear or browser restart
 
-### PHP API Setup
-- **Requirements**: PHP 7.4+, nginx or Apache
-- **Setup Instructions**: See `api/README.md` for Docker setup
-- **Voting System**: Stores votes in JSON files (`api/votes_data/`)
-- **Image Upload**: 24-hour retention, stored in `api/images_data/`
-- **Security**: Multiple validation layers for file uploads
+## Database and Storage
 
-### Testing APIs (if PHP available)
-```bash
-# Test voting API
-curl "http://localhost/api/votes.php?action=get&key=test_vote"
+### SQLite Database
 
-# Test image cleanup
-curl "http://localhost/api/images.php"
-```
+- **Location**: `api/data/eatinator.db` (auto-created)
+- **Tables**: `votes`, `user_votes`, `images`
+- **Backup**: Copy database file from `api/data/` directory
+- **Reset**: Delete database file, restart backend (creates fresh DB)
+
+### Image Storage
+
+- **Location**: `api/data/images/` (auto-created)
+- **Retention**: 24-hour automatic cleanup
+- **Formats**: JPEG, PNG, WebP (validated with Pillow)
+- **Size Limit**: 5MB per file
+
+### Development Data
+
+- **Persistence**: Data survives container restarts via Docker volumes
+- **Reset**: `docker compose down -v` removes all data
+- **Migration**: Database schema auto-created on startup
+
+## API Endpoints (FastAPI Backend)
+
+### Voting System
+- `GET /api/votes.php?key=vote_key` - Get votes for item
+- `POST /api/votes.php` - Cast vote with JSON payload
+
+### Image Upload  
+- `GET /api/images.php?key=image_key` - Get images for dish
+- `POST /api/images.php` - Upload image (multipart/form-data)
+- `GET /api/images.php?action=view&key=image_key&file=filename` - View image
+
+### System
+- `GET /health` - Health check endpoint
+- `GET /docs` - Interactive API documentation (Swagger UI)
 
 ## Architecture Notes
 
 ### Application Type
-- **Static PWA**: No server-side rendering, no build process
-- **Client-Side Only**: All logic runs in browser
-- **Progressive Enhancement**: Core functionality works without server APIs
+- **Progressive Web App**: Installable, offline-capable, responsive
+- **Static Frontend**: No server-side rendering, client-side only
+- **Modern Backend**: FastAPI with automatic validation and documentation
 
 ### Data Flow
-1. **Menu Fetching**: Try API → Fallback to HTML scraping → Display results
-2. **Voting**: Try server API → Fallback to localStorage
-3. **Images**: Server-only feature (requires PHP)
+1. **Menu Fetching**: External API → Fallback message if blocked
+2. **Voting**: Frontend → FastAPI → SQLite → Response
+3. **Images**: Upload → FastAPI validation → File storage → Database record
 
 ### Browser Compatibility
-- **Modern Browsers**: Full PWA functionality
-- **Legacy Browsers**: Basic functionality, no PWA features
-- **Mobile**: Optimized for mobile devices, installable as app
+- **Modern Browsers**: Full PWA functionality with all features
+- **Legacy Browsers**: Basic functionality, graceful feature degradation
+- **Mobile Optimized**: iOS-style interface, touch-friendly interactions
+
+### Development Workflow
+- **Code Changes**: Direct file editing, no build step required
+- **Testing**: Docker Compose for integration, simple HTTP server for frontend-only
+- **Deployment**: Production-ready Docker Compose configuration included
 
 ---
 
-**Remember**: This is a zero-dependency static web application. Most development tasks involve editing HTML/JavaScript directly in the main files. Always test both the main application and demo after changes, and expect some features to be limited in sandboxed development environments.
+**Remember**: This is a modern web application with FastAPI backend and modular frontend. Use Docker Compose as the primary development and deployment method. The application gracefully handles external dependencies being unavailable and provides comprehensive fallback behavior for reliable operation in various environments.
