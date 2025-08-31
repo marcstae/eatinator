@@ -166,3 +166,32 @@ body {
 .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* AI Assistant Styles */
+#aiFab {
+    box-shadow: 0 8px 16px rgba(0, 122, 255, 0.3);
+}
+
+#aiFab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 24px rgba(0, 122, 255, 0.4);
+}
+
+#aiChatContainer {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ai-message-fade-in {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
