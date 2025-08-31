@@ -5,7 +5,7 @@ services:
     build: ./api
     container_name: eatinator-api
     ports:
-      - "8080:8080"
+      - "5694:5694"
     volumes:
       # Mount data directory for persistence
       - ./api/data:/app/data
@@ -13,7 +13,7 @@ services:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5694/health"]
       interval: 30s
       timeout: 10s
       retries: 3
