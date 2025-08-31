@@ -1,0 +1,24 @@
+{
+  "assets": [
+    {
+      "path": "CHANGELOG.md"
+    }
+  ],
+  "changelog": {
+    "docker-image": "quay.io/go-semantic-release/conventional-changelog:latest"
+  },
+  "commit-analyzer": {
+    "docker-image": "quay.io/go-semantic-release/commit-analyzer:latest"
+  },
+  "release-notes-generator": {
+    "docker-image": "quay.io/go-semantic-release/conventional-changelog:latest"
+  },
+  "github": {
+    "assets": [
+      {
+        "path": "CHANGELOG.md",
+        "name": "CHANGELOG.md"
+      }
+    ]
+  }
+}
