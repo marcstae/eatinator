@@ -60,7 +60,7 @@ function hideKioskElements() {
     }
     
     // Hide day selection
-    const daySelection = document.querySelector('.px-4.py-4');
+    const daySelection = document.getElementById('dayButtons').parentElement;
     if (daySelection) {
         daySelection.style.display = 'none';
     }
