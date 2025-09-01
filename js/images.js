@@ -97,7 +97,7 @@ function handleImageUpload(dishName, menuType) {
         const imageKey = getImageKey(dishName, menuType, currentDate);
         const button = document.querySelector(`[data-upload-key="${imageKey}"]`);
         if (button) {
-            button.innerHTML = '<span class="text-lg">⏳</span><span class="text-xs">Uploading...</span>';
+            button.innerHTML = '<span class="text-lg">⏳</span>';
             button.disabled = true;
         }
 
@@ -106,9 +106,9 @@ function handleImageUpload(dishName, menuType) {
             
             // Success feedback
             if (button) {
-                button.innerHTML = '<span class="text-lg">✅</span><span class="text-xs">Uploaded!</span>';
+                button.innerHTML = '<span class="text-lg">✅</span>';
                 setTimeout(() => {
-                    button.innerHTML = '<span class="text-lg">📷</span><span class="text-xs font-medium">Add</span>';
+                    button.innerHTML = '<span class="text-lg">📷</span>';
                     button.disabled = false;
                 }, 2000);
             }
@@ -121,7 +121,7 @@ function handleImageUpload(dishName, menuType) {
             
             // Reset button
             if (button) {
-                button.innerHTML = '<span class="text-lg">📷</span><span class="text-xs font-medium">Add</span>';
+                button.innerHTML = '<span class="text-lg">📷</span>';
                 button.disabled = false;
             }
         }
@@ -199,17 +199,16 @@ function generateImageHtml(dishName, menuType) {
             <div class="flex justify-between items-center">
                 <span class="text-ios-gray-2 text-sm font-medium">Photos:</span>
                 <div class="flex gap-2">
-                    <button class="vote-button swiftui-button px-2 py-2 rounded-lg flex items-center gap-1" 
+                    <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center" 
                             onclick="handleImageUpload('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
                             data-upload-key="${imageKey}">
                         <span class="text-lg">📷</span>
-                        <span class="text-xs font-medium">Add</span>
                     </button>
-                    <button class="vote-button swiftui-button px-2 py-2 rounded-lg flex items-center gap-1 hidden" 
+                    <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center hidden" 
                             onclick="showImages('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
                             data-view-key="${imageKey}">
                         <span class="text-lg">🖼️</span>
-                        <span class="text-xs font-medium" data-image-count="${imageKey}">0</span>
+                        <span class="text-lg" data-image-count="${imageKey}">0</span>
                     </button>
                 </div>
             </div>
