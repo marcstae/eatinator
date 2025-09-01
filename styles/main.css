@@ -167,6 +167,52 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
 }
 
+<<<<<<< HEAD
+/* UwU Mode Styles */
+.uwu-mode {
+    --uwu-primary: #FF69B4;
+    --uwu-secondary: #FFB6C1;
+    --uwu-accent: #FFC0CB;
+}
+
+.uwu-mode .swiftui-card {
+    background: linear-gradient(135deg, rgba(255, 105, 180, 0.2), rgba(255, 182, 193, 0.2));
+    border: 1px solid rgba(255, 105, 180, 0.4);
+}
+
+.uwu-mode .segment-control {
+    background: rgba(255, 105, 180, 0.3);
+}
+
+.uwu-mode .segment-active {
+    background: var(--uwu-primary);
+}
+
+.uwu-mode .day-button.active {
+    background: var(--uwu-primary);
+    border-color: var(--uwu-primary);
+}
+
+.uwu-mode .price-badge {
+    background: linear-gradient(135deg, var(--uwu-primary), var(--uwu-secondary));
+}
+
+.uwu-mode .menu-type-badge {
+    background: rgba(255, 105, 180, 0.6);
+    color: white;
+    border: 1px solid rgba(255, 105, 180, 0.8);
+}
+
+.uwu-mode h1 {
+    color: var(--uwu-primary);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+}
+
+.uwu-mode .uwu-text::after {
+    content: " ✨";
+}
+
 /* AI Assistant Styles */
 #aiFab {
     box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -230,4 +276,5 @@ body {
 
 .ai-chat-full {
     height: 40vh !important;
+}
 }

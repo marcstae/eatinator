@@ -2,6 +2,11 @@
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize UwU mode if previously enabled
+    if (uwuModeEnabled) {
+        document.body.classList.add('uwu-mode');
+    }
+    
     if (kioskMode) {
         initKioskMode();
     } else {
@@ -55,7 +60,7 @@ function hideKioskElements() {
     }
     
     // Hide day selection
-    const daySelection = document.querySelector('.px-4.py-4');
+    const daySelection = document.getElementById('dayButtons').parentElement;
     if (daySelection) {
         daySelection.style.display = 'none';
     }
