@@ -40,6 +40,9 @@ function initKioskMode() {
     hideKioskElements();
     loadKioskMenu();
     
+    // Add kiosk-scroll class to html for enhanced scrolling behavior
+    document.documentElement.classList.add('kiosk-scroll');
+    
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('data:text/javascript,console.log("SW loaded")');
@@ -271,6 +274,16 @@ function generateKioskImageHtml(dishName, menuType) {
     `;
 }
 
+// Helper function to get current document height
+function getCurrentDocumentHeight() {
+    const body = document.body;
+    const html = document.documentElement;
+    return Math.max(
+        body.scrollHeight, body.offsetHeight,
+        html.clientHeight, html.scrollHeight, html.offsetHeight
+    );
+}
+
 // Auto-scroll functionality
 function setupAutoScroll() {
     // Clear any existing interval
@@ -278,30 +291,37 @@ function setupAutoScroll() {
         clearInterval(window.autoScrollInterval);
     }
     
-    // Check if content height is larger than screen height
-    const body = document.body;
-    const html = document.documentElement;
-    const documentHeight = Math.max(
-        body.scrollHeight, body.offsetHeight,
-        html.clientHeight, html.scrollHeight, html.offsetHeight
-    );
+    // Check if content height is larger than screen height to determine if scrolling is needed
+    const initialDocumentHeight = getCurrentDocumentHeight();
     const screenHeight = window.innerHeight;
     
-    console.log('Auto-scroll check:', { documentHeight, screenHeight, willScroll: documentHeight > screenHeight });
+    console.log('Auto-scroll check:', { 
+        documentHeight: initialDocumentHeight, 
+        screenHeight, 
+        willScroll: initialDocumentHeight > screenHeight 
+    });
     
-    if (documentHeight > screenHeight) {
+    if (initialDocumentHeight > screenHeight) {
         // Start auto-scroll every 30 seconds
         window.autoScrollInterval = setInterval(() => {
+            // Recalculate document height on each scroll to handle dynamic content
+            const currentDocumentHeight = getCurrentDocumentHeight();
+            const currentScreenHeight = window.innerHeight;
             const currentScroll = window.pageYOffset;
-            const maxScroll = documentHeight - screenHeight;
+            const maxScroll = currentDocumentHeight - currentScreenHeight;
+            
+            // Skip scrolling if content no longer needs scrolling
+            if (currentDocumentHeight <= currentScreenHeight) {
+                return;
+            }
             
             if (currentScroll >= maxScroll) {
-                // Scroll back to top
+                // Scroll back to top with smooth but quick transition
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Scroll down by screen height
+                // Scroll down by screen height with smooth but quick transition
                 window.scrollTo({ 
-                    top: Math.min(currentScroll + screenHeight, maxScroll), 
+                    top: Math.min(currentScroll + currentScreenHeight, maxScroll), 
                     behavior: 'smooth' 
                 });
             }
