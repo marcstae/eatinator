@@ -34,7 +34,7 @@ async function getServerVotes(voteKey) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), VOTING_CONFIG.timeout);
 
-        const response = await fetch(`${VOTING_CONFIG.apiUrl}?action=get&key=${encodeURIComponent(voteKey)}`, {
+        const response = await fetch(`${VOTING_CONFIG.apiUrl}/${encodeURIComponent(voteKey)}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal
@@ -65,7 +65,6 @@ async function submitServerVote(voteKey, voteType, userId) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                action: 'vote',
                 key: voteKey,
                 voteType: voteType,
                 userId: userId
@@ -203,12 +202,15 @@ function generateVotingHtml(dishName, menuType) {
         `;
     }).join('');
 
+    // Generate image button HTML to be included in the same row
+    const imageButtonHtml = generateImageButtonHtml(dishName, menuType);
+
     return `
         <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-vote-key="${voteKey}">
-            <div class="flex justify-between items-center">
-                <span class="text-ios-gray-2 text-sm font-medium">Rate this meal:</span>
+            <div class="flex justify-center">
                 <div class="flex gap-2">
                     ${voteButtons}
+                    ${imageButtonHtml}
                 </div>
             </div>
         </div>

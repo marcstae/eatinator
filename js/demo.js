@@ -1,7 +1,6 @@
 // Demo-specific functionality for image upload demo
 
-// Set current date for demo (can be overridden) - Define this first
-let currentDate = new Date().toISOString().split('T')[0];
+// Note: currentDate is defined in state.js, no need to redeclare
 
 // Demo menu data
 const demoMenuItems = [
@@ -26,6 +25,9 @@ const demoMenuItems = [
 function createMenuItemHtml(item) {
     const priceHtml = item.price > 0 ? `<span class="text-ios-blue text-sm font-semibold">CHF ${item.price.toFixed(2)}</span>` : '';
     const menuTypeBadge = `<span class="bg-ios-dark-4 text-ios-gray-2 text-xs px-2 py-1 rounded-full">${item.menuType}</span>`;
+    
+    // For demo purposes, simulate voting being active to show inline image buttons
+    const votingHtml = generateDemoVotingHtml(item.dishName, item.menuType);
     const imageHtml = generateImageHtml(item.dishName, item.menuType);
 
     return `
@@ -37,7 +39,49 @@ function createMenuItemHtml(item) {
             <div class="flex flex-wrap gap-2 mb-3">
                 ${menuTypeBadge}
             </div>
-            ${imageHtml}
+            ${votingHtml || imageHtml}
+        </div>
+    `;
+}
+
+// Generate demo voting HTML with image button inline
+function generateDemoVotingHtml(dishName, menuType) {
+    const imageKey = getImageKey(dishName, menuType, currentDate);
+    
+    // Demo vote buttons (disabled for demo)
+    const voteButtons = `
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">👍</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">😐</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">👎</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+    `;
+
+    // Image button (functional)
+    const imageButtonHtml = `
+        <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                onclick="handleImageButtonClick('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
+                data-image-button-key="${imageKey}">
+            <span class="text-lg">📷</span>
+            <span class="text-sm font-medium" data-image-count="${imageKey}">0</span>
+        </button>
+    `;
+
+    return `
+        <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-vote-key="demo_${imageKey}">
+            <div class="flex justify-center">
+                <div class="flex gap-2">
+                    ${voteButtons}
+                    ${imageButtonHtml}
+                </div>
+            </div>
         </div>
     `;
 }
@@ -46,6 +90,13 @@ function createMenuItemHtml(item) {
 function initDemo() {
     const container = document.getElementById('menuContainer');
     container.innerHTML = demoMenuItems.map(item => createMenuItemHtml(item)).join('');
+    
+    // Refresh image counts after rendering demo items
+    setTimeout(() => {
+        if (typeof refreshImageCounts === 'function') {
+            refreshImageCounts();
+        }
+    }, 100);
 }
 
 // Start demo when page loads

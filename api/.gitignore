@@ -6,3 +6,7 @@ votes_data/
 images_data/
 # But keep security files
 !images_data/.htaccess
+
+# FastAPI data directory - generated at runtime
+data/
+eatinator.db

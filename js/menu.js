@@ -132,8 +132,13 @@ function displayMenu(data) {
     menuContainer.innerHTML = menuHtml;
     menuContainer.classList.add('slide-up');
     
-    // Load server-side vote counts after rendering the menu
-    setTimeout(() => refreshVoteCounts(), 100);
+    // Load server-side vote counts and image counts after rendering the menu
+    setTimeout(() => {
+        refreshVoteCounts();
+        if (typeof refreshImageCounts === 'function') {
+            refreshImageCounts();
+        }
+    }, 100);
 }
 
 // Filter menu items by date and category
@@ -232,11 +237,11 @@ function createMenuItemHtml(item) {
     // Apply UwU transformation to dish name
     const displayDishName = uwuifyText(dishName);
 
-    // Generate voting HTML if voting is active
+    // Generate voting HTML if voting is active (this now includes image button)
     const votingHtml = generateVotingHtml(dishName, menulineLabel);
     
-    // Generate image upload/view HTML
-    const imageHtml = generateImageHtml(dishName, menulineLabel);
+    // Generate image upload/view HTML only when voting is not active
+    const imageHtml = !isVotingActive() && IMAGE_CONFIG.enabled ? generateImageHtml(dishName, menulineLabel) : '';
 
     return `
         <div class="swiftui-card p-4 rounded-xl ${votingHtml || imageHtml ? '' : 'swiftui-button'}" ${votingHtml || imageHtml ? '' : `onclick="showItemDetails('${dishName.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}', '${menulineLabel.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')"`}>
