@@ -197,6 +197,11 @@ body {
     }
 }
 
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
 #aiChatContainer {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(20px);

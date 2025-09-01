@@ -1,5 +1,3 @@
-
-// Tailwind configuration (only set if tailwind is available)
 if (typeof tailwind !== 'undefined') {
     tailwind.config = {
         darkMode: 'class',
