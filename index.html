@@ -30,7 +30,14 @@
     <!-- Tailwind CSS -->
      <script src="js/tailwind.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/turnstile.js"></script>
     <link rel="stylesheet" href="styles/main.css">
+    
+    <!-- Turnstile Site Key Configuration -->
+    <script>
+        // Set Turnstile site key from environment or configuration
+        window.TURNSTILE_SITE_KEY = window.TURNSTILE_SITE_KEY || '';
+    </script>
 </head>
 <body class="dark bg-ios-dark-1 text-white min-h-screen">
     <div class="min-h-screen safe-top safe-bottom">

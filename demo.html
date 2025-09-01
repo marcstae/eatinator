@@ -83,8 +83,15 @@
 
     <!-- JavaScript modules -->
     <script src="js/config.js"></script>
+    <script src="js/turnstile.js"></script>
     <script src="js/state.js"></script>
     <script src="js/images.js"></script>
     <script src="js/demo.js"></script>
+    
+    <!-- Turnstile Site Key Configuration -->
+    <script>
+        // Set Turnstile site key from environment or configuration
+        window.TURNSTILE_SITE_KEY = window.TURNSTILE_SITE_KEY || '';
+    </script>
 </body>
 </html>
