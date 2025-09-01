@@ -25,6 +25,9 @@ const demoMenuItems = [
 function createMenuItemHtml(item) {
     const priceHtml = item.price > 0 ? `<span class="text-ios-blue text-sm font-semibold">CHF ${item.price.toFixed(2)}</span>` : '';
     const menuTypeBadge = `<span class="bg-ios-dark-4 text-ios-gray-2 text-xs px-2 py-1 rounded-full">${item.menuType}</span>`;
+    
+    // For demo purposes, simulate voting being active to show inline image buttons
+    const votingHtml = generateDemoVotingHtml(item.dishName, item.menuType);
     const imageHtml = generateImageHtml(item.dishName, item.menuType);
 
     return `
@@ -36,7 +39,49 @@ function createMenuItemHtml(item) {
             <div class="flex flex-wrap gap-2 mb-3">
                 ${menuTypeBadge}
             </div>
-            ${imageHtml}
+            ${votingHtml || imageHtml}
+        </div>
+    `;
+}
+
+// Generate demo voting HTML with image button inline
+function generateDemoVotingHtml(dishName, menuType) {
+    const imageKey = getImageKey(dishName, menuType, currentDate);
+    
+    // Demo vote buttons (disabled for demo)
+    const voteButtons = `
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">👍</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">😐</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+            <span class="text-lg">👎</span>
+            <span class="text-sm font-medium">0</span>
+        </button>
+    `;
+
+    // Image button (functional)
+    const imageButtonHtml = `
+        <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                onclick="handleImageButtonClick('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
+                data-image-button-key="${imageKey}">
+            <span class="text-lg">📷</span>
+            <span class="text-sm font-medium" data-image-count="${imageKey}">0</span>
+        </button>
+    `;
+
+    return `
+        <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-vote-key="demo_${imageKey}">
+            <div class="flex justify-center">
+                <div class="flex gap-2">
+                    ${voteButtons}
+                    ${imageButtonHtml}
+                </div>
+            </div>
         </div>
     `;
 }

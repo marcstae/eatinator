@@ -202,12 +202,15 @@ function generateVotingHtml(dishName, menuType) {
         `;
     }).join('');
 
+    // Generate image button HTML to be included in the same row
+    const imageButtonHtml = generateImageButtonHtml(dishName, menuType);
+
     return `
         <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-vote-key="${voteKey}">
-            <div class="flex justify-between items-center">
-                <span class="text-ios-gray-2 text-sm font-medium">Rate this meal:</span>
+            <div class="flex justify-center">
                 <div class="flex gap-2">
                     ${voteButtons}
+                    ${imageButtonHtml}
                 </div>
             </div>
         </div>

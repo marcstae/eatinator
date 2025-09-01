@@ -230,11 +230,11 @@ function createMenuItemHtml(item) {
     const dietaryHtml = dietaryInfo.length > 0 ? 
         dietaryInfo.map(info => `<span class="${info.colorClass} text-xs px-2 py-1 rounded-full mr-2">${info.label}</span>`).join('') : '';
 
-    // Generate voting HTML if voting is active
+    // Generate voting HTML if voting is active (this now includes image button)
     const votingHtml = generateVotingHtml(dishName, menulineLabel);
     
-    // Generate image upload/view HTML
-    const imageHtml = generateImageHtml(dishName, menulineLabel);
+    // Generate image upload/view HTML only when voting is not active
+    const imageHtml = !isVotingActive() && IMAGE_CONFIG.enabled ? generateImageHtml(dishName, menulineLabel) : '';
 
     return `
         <div class="swiftui-card p-4 rounded-xl ${votingHtml || imageHtml ? '' : 'swiftui-button'}" ${votingHtml || imageHtml ? '' : `onclick="showItemDetails('${dishName}', '${menulineLabel}')"`}>
