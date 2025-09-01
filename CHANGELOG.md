@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/marcstae/eatinator/compare/v1.0.2...v1.0.3) (2025-09-01)
+
+
+### Bug Fixes
+
+* make nginx conf work ([5dc6e61](https://github.com/marcstae/eatinator/commit/5dc6e618fc461ffb7c7a2b468bb68a9a26ac331b))
+
 ## [1.0.1](https://github.com/marcstae/eatinator/compare/v1.0.0...v1.0.1) (2025-09-01)
 
 
