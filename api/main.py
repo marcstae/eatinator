@@ -3,7 +3,7 @@ FastAPI backend for Eatinator
 Replaces PHP implementation with Python FastAPI + SQLite
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -46,6 +46,11 @@ ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 RETENTION_HOURS = 24
 MAX_VOTES_PER_USER = 10
 
+# Cloudflare Turnstile Configuration
+TURNSTILE_SECRET_KEY = os.getenv('TURNSTILE_SECRET_KEY', '')
+TURNSTILE_ENABLED = bool(TURNSTILE_SECRET_KEY)
+TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
 # AI Configuration - Only mlvoca with deepseek as requested
 AI_CONFIG = {
     'url': 'https://mlvoca.com/api/generate',
@@ -65,6 +70,7 @@ class VoteRequest(BaseModel):
     key: str
     voteType: str
     userId: str
+    turnstileToken: Optional[str] = None
 
 class VoteResponse(BaseModel):
     success: bool
@@ -81,6 +87,7 @@ class ImageResponse(BaseModel):
 class AiRequest(BaseModel):
     message: str
     context: dict
+    turnstileToken: Optional[str] = None
 
 class AiResponse(BaseModel):
     success: bool
@@ -174,6 +181,38 @@ def cleanup_old_images():
         logger.info(f"Cleaned up {len(old_images)} old images")
     except Exception as e:
         logger.error(f"Error cleaning up old images: {e}")
+
+async def verify_turnstile_token(token: str, remote_ip: str = None) -> bool:
+    """Verify Cloudflare Turnstile token"""
+    if not TURNSTILE_ENABLED:
+        return True  # Skip verification if Turnstile is disabled
+    
+    if not token:
+        return False
+    
+    try:
+        data = {
+            'secret': TURNSTILE_SECRET_KEY,
+            'response': token
+        }
+        if remote_ip:
+            data['remoteip'] = remote_ip
+        
+        response = requests.post(
+            TURNSTILE_VERIFY_URL,
+            data=data,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('success', False)
+        else:
+            logger.warning(f"Turnstile verification failed with status: {response.status_code}")
+            return False
+    except Exception as e:
+        logger.error(f"Error verifying Turnstile token: {e}")
+        return False
 
 def validate_image_file(file: UploadFile) -> str:
     """Validate uploaded image and return safe extension"""
@@ -349,13 +388,20 @@ class RestVoteRequest(BaseModel):
     key: str
     voteType: str
     userId: str
+    turnstileToken: Optional[str] = None
 
 @app.post("/api/votes")
-async def cast_vote_rest(vote_request: RestVoteRequest):
+async def cast_vote_rest(vote_request: RestVoteRequest, request: Request):
     """Cast a vote (REST endpoint)"""
     try:
         if not all([vote_request.key, vote_request.voteType, vote_request.userId]):
             raise HTTPException(400, "Missing required parameters")
+        
+        # Verify Turnstile token if enabled
+        if TURNSTILE_ENABLED:
+            client_ip = request.client.host if request.client else None
+            if not await verify_turnstile_token(vote_request.turnstileToken, client_ip):
+                raise HTTPException(403, "Turnstile verification failed")
         
         if vote_request.voteType not in ["good", "neutral", "bad"]:
             raise HTTPException(400, "Invalid vote type")
@@ -427,7 +473,7 @@ async def get_votes(key: str = Query(..., description="Vote key")):
     return await get_votes_rest(key)
 
 @app.post("/api/votes.php")
-async def cast_vote(vote_request: VoteRequest):
+async def cast_vote(vote_request: VoteRequest, request: Request):
     """Cast a vote (legacy endpoint)"""
     try:
         if vote_request.action != "vote":
@@ -437,9 +483,10 @@ async def cast_vote(vote_request: VoteRequest):
         rest_request = RestVoteRequest(
             key=vote_request.key,
             voteType=vote_request.voteType,
-            userId=vote_request.userId
+            userId=vote_request.userId,
+            turnstileToken=vote_request.turnstileToken
         )
-        return await cast_vote_rest(rest_request)
+        return await cast_vote_rest(rest_request, request)
     
     except HTTPException:
         raise
@@ -517,11 +564,19 @@ class RestImageUpload(BaseModel):
 
 @app.post("/api/images")
 async def upload_image_rest(
+    request: Request,
     key: str = Form(..., description="Image key"),
-    image: UploadFile = File(..., description="Image file")
+    image: UploadFile = File(..., description="Image file"),
+    turnstileToken: Optional[str] = Form(None, description="Turnstile token")
 ):
     """Upload an image for a dish (REST endpoint)"""
     try:
+        # Verify Turnstile token if enabled
+        if TURNSTILE_ENABLED:
+            client_ip = request.client.host if request.client else None
+            if not await verify_turnstile_token(turnstileToken, client_ip):
+                raise HTTPException(403, "Turnstile verification failed")
+        
         # Validate file size
         if not image.size:
             raise HTTPException(400, "No file provided")
@@ -601,17 +656,25 @@ async def get_images(
 
 @app.post("/api/images.php")
 async def upload_image(
+    request: Request,
     key: str = Form(..., description="Image key"),
-    image: UploadFile = File(..., description="Image file")
+    image: UploadFile = File(..., description="Image file"),
+    turnstileToken: Optional[str] = Form(None, description="Turnstile token")
 ):
     """Upload an image for a dish (legacy endpoint)"""
-    return await upload_image_rest(key, image)
+    return await upload_image_rest(request, key, image, turnstileToken)
 
 # AI API endpoints
 @app.post("/api/ai")
-async def ai_chat(ai_request: AiRequest):
+async def ai_chat(ai_request: AiRequest, request: Request):
     """Process AI chat request"""
     try:
+        # Verify Turnstile token if enabled
+        if TURNSTILE_ENABLED:
+            client_ip = request.client.host if request.client else None
+            if not await verify_turnstile_token(ai_request.turnstileToken, client_ip):
+                raise HTTPException(403, "Turnstile verification failed")
+        
         if not ai_request.message.strip():
             raise HTTPException(400, "Message cannot be empty")
         
