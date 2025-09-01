@@ -53,3 +53,12 @@ const IMAGE_CONFIG = {
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     timeout: 10000 // 10 second timeout for uploads
 };
+
+// Cloudflare Turnstile configuration
+const TURNSTILE_CONFIG = {
+    siteKey: '', // Set via environment or configuration
+    enabled: false, // Will be set to true when siteKey is provided
+    theme: 'light', // 'light', 'dark', or 'auto'
+    size: 'normal', // 'normal', 'compact'
+    timeout: 30000 // 30 second timeout for token
+};

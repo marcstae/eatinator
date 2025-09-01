@@ -490,6 +490,44 @@ const MENU_CONFIG = {
 - **Rate Limiting**: Built-in protection against spam
 - **Data Retention**: Automatic cleanup of temporary data
 
+### Cloudflare Turnstile Bot Protection (Optional)
+
+Eatinator supports Cloudflare Turnstile to protect write operations (voting, image uploads) from automated abuse.
+
+**Configuration:**
+
+1. **Get Turnstile Keys**: 
+   - Create a site at [Cloudflare Dashboard](https://dash.cloudflare.com/)
+   - Get your Site Key and Secret Key
+
+2. **Backend Configuration**:
+   ```bash
+   # Set environment variable for the API container
+   export TURNSTILE_SECRET_KEY="your-secret-key-here"
+   
+   # Or in docker-compose.yml:
+   services:
+     eatinator-api:
+       environment:
+         - TURNSTILE_SECRET_KEY=your-secret-key-here
+   ```
+
+3. **Frontend Configuration**:
+   ```bash
+   # Set in your web server or HTML directly
+   window.TURNSTILE_SITE_KEY = "your-site-key-here";
+   ```
+
+**Features:**
+- **Automatic Protection**: Enabled when keys are configured, disabled otherwise
+- **User Experience**: Shows verification dialog only when needed
+- **Graceful Fallback**: Works without Turnstile if not configured
+- **Token Management**: Automatic token refresh and error handling
+
+**Testing:**
+- Without keys: Application works normally (Turnstile disabled)  
+- With keys: Users see verification challenge before write operations
+
 ## 📄 License
 
 This project is open source. See the repository for license details.

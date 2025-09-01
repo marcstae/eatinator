@@ -58,17 +58,33 @@ async function submitServerVote(voteKey, voteType, userId) {
     }
 
     try {
+        // Get Turnstile token if enabled
+        let turnstileToken = null;
+        if (typeof getTurnstileTokenWithUI === 'function') {
+            turnstileToken = await getTurnstileTokenWithUI('Verify Vote', 'Please verify to submit your vote:');
+            if (TURNSTILE_CONFIG.enabled && !turnstileToken) {
+                console.log('Vote cancelled: Turnstile verification required');
+                return false;
+            }
+        }
+        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), VOTING_CONFIG.timeout);
+
+        const requestBody = {
+            key: voteKey,
+            voteType: voteType,
+            userId: userId
+        };
+        
+        if (turnstileToken) {
+            requestBody.turnstileToken = turnstileToken;
+        }
 
         const response = await fetch(VOTING_CONFIG.apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                key: voteKey,
-                voteType: voteType,
-                userId: userId
-            }),
+            body: JSON.stringify(requestBody),
             signal: controller.signal
         });
 
@@ -77,6 +93,12 @@ async function submitServerVote(voteKey, voteType, userId) {
         if (response.ok) {
             const data = await response.json();
             return data.success;
+        } else if (response.status === 403) {
+            console.log('Vote rejected: Turnstile verification failed');
+            // Reset turnstile for retry
+            if (typeof resetTurnstileWidget === 'function') {
+                resetTurnstileWidget();
+            }
         }
     } catch (error) {
         console.log('Server vote submission failed:', error.message);

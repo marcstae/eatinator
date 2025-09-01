@@ -30,6 +30,16 @@ The new backend is built with:
 - SQLite injection prevention with parameterized queries
 - CORS support for cross-origin requests
 - Automatic cleanup of old images
+- **Cloudflare Turnstile Bot Protection**: Optional verification for write operations
+
+### Cloudflare Turnstile Integration
+
+All write endpoints (`POST /api/votes`, `POST /api/images`, `POST /api/ai`) support optional Turnstile verification:
+
+- **Environment Variable**: Set `TURNSTILE_SECRET_KEY` to enable
+- **Request Field**: Include `turnstileToken` in request body/form data
+- **Graceful Fallback**: Disabled when secret key not provided
+- **Error Response**: Returns `403 Forbidden` for invalid tokens
 
 ## API Endpoints
 
@@ -51,7 +61,8 @@ curl -X POST "http://localhost:5694/api/votes" \
   -d '{
     "key": "vote_key", 
     "voteType": "good",
-    "userId": "user_123"
+    "userId": "user_123",
+    "turnstileToken": "optional-turnstile-token"
   }'
 ```
 
@@ -97,7 +108,8 @@ Upload an image.
 ```bash
 curl -X POST "http://localhost:5694/api/images" \
   -F "key=image_key" \
-  -F "image=@image.jpg"
+  -F "image=@image.jpg" \
+  -F "turnstileToken=optional-turnstile-token"
 ```
 
 **Legacy Endpoints (Backward Compatibility):**

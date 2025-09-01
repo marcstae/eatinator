@@ -68,6 +68,17 @@ async function uploadImage(dishName, menuType, file) {
     formData.append('image', file);
     formData.append('key', imageKey);
 
+    // Get Turnstile token if enabled
+    if (typeof getTurnstileTokenWithUI === 'function') {
+        const turnstileToken = await getTurnstileTokenWithUI('Verify Upload', 'Please verify to upload your image:');
+        if (TURNSTILE_CONFIG.enabled && !turnstileToken) {
+            throw new Error('Upload cancelled: Verification required');
+        }
+        if (turnstileToken) {
+            formData.append('turnstileToken', turnstileToken);
+        }
+    }
+
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), IMAGE_CONFIG.timeout);
@@ -89,6 +100,9 @@ async function uploadImage(dishName, menuType, file) {
     } catch (error) {
         if (error.name === 'AbortError') {
             throw new Error('Upload timeout');
+        }
+        if (error.message && error.message.includes('403')) {
+            throw new Error('Upload rejected: Verification failed');
         }
         throw error;
     }
