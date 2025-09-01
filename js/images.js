@@ -232,7 +232,7 @@ async function loadImagesForItem(imageKey) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), IMAGE_CONFIG.timeout);
 
-        const response = await fetch(`${IMAGE_CONFIG.apiUrl}?key=${encodeURIComponent(imageKey)}`, {
+        const response = await fetch(`${IMAGE_CONFIG.apiUrl}/${encodeURIComponent(imageKey)}`, {
             method: 'GET',
             signal: controller.signal
         });
