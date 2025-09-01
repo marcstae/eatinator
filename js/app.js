@@ -29,8 +29,8 @@ function initNormalMode() {
     selectDay(currentDate, dayNames[dayOfWeek]);
     loadMenu();
     
-    // Initialize AI Assistant if enabled
-    if (typeof initAiAssistant === 'function' && isAiEnabled()) {
+    // Initialize AI Assistant (will handle opt-in check internally)
+    if (typeof initAiAssistant === 'function') {
         initAiAssistant();
     }
     
