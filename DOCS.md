@@ -224,11 +224,27 @@ CREATE TABLE images (
 
 #### Voting System
 
+**REST Endpoints (Recommended):**
 ```bash
 # Get votes for an item
-GET /api/votes.php?key=vote_key
+GET /api/votes/{vote_key}
 
 # Cast a vote
+POST /api/votes
+Content-Type: application/json
+{
+  "key": "vote_key",
+  "voteType": "good|neutral|bad", 
+  "userId": "user_123"
+}
+```
+
+**Legacy Endpoints (Backward Compatibility):**
+```bash
+# Get votes for an item (legacy)
+GET /api/votes.php?key=vote_key
+
+# Cast a vote (legacy)  
 POST /api/votes.php
 Content-Type: application/json
 {
@@ -241,17 +257,33 @@ Content-Type: application/json
 
 #### Image Upload System
 
+**REST Endpoints (Recommended):**
 ```bash
 # Get images for a dish
-GET /api/images.php?key=image_key
+GET /api/images/{image_key}
 
 # Upload an image
-POST /api/images.php
+POST /api/images
 Content-Type: multipart/form-data
 key=image_key
 image=<file>
 
 # View an image
+GET /api/images/{image_key}/{filename}
+```
+
+**Legacy Endpoints (Backward Compatibility):**
+```bash
+# Get images for a dish (legacy)
+GET /api/images.php?key=image_key
+
+# Upload an image (legacy)
+POST /api/images.php
+Content-Type: multipart/form-data
+key=image_key
+image=<file>
+
+# View an image (legacy)
 GET /api/images.php?action=view&key=image_key&file=filename.jpg
 ```
 
