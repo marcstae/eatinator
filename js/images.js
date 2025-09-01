@@ -94,9 +94,10 @@ function handleImageUpload(dishName, menuType) {
         if (!file) return;
 
         // Show loading state
-        const button = document.querySelector(`[data-upload-key="${getImageKey(dishName, menuType, currentDate)}"]`);
+        const imageKey = getImageKey(dishName, menuType, currentDate);
+        const button = document.querySelector(`[data-upload-key="${imageKey}"]`);
         if (button) {
-            button.innerHTML = '<span class="text-lg">⏳</span><span class="text-sm">Uploading...</span>';
+            button.innerHTML = '<span class="text-lg">⏳</span><span class="text-xs">Uploading...</span>';
             button.disabled = true;
         }
 
@@ -105,19 +106,22 @@ function handleImageUpload(dishName, menuType) {
             
             // Success feedback
             if (button) {
-                button.innerHTML = '<span class="text-lg">✅</span><span class="text-sm">Uploaded!</span>';
+                button.innerHTML = '<span class="text-lg">✅</span><span class="text-xs">Uploaded!</span>';
                 setTimeout(() => {
-                    button.innerHTML = '<span class="text-lg">📷</span><span class="text-sm">Add Photo</span>';
+                    button.innerHTML = '<span class="text-lg">📷</span><span class="text-xs font-medium">Add</span>';
                     button.disabled = false;
                 }, 2000);
             }
+
+            // Refresh image counts to update the view button
+            setTimeout(() => refreshImageCounts(), 100);
         } catch (error) {
             console.error('Upload failed:', error);
             alert('Failed to upload image: ' + error.message);
             
             // Reset button
             if (button) {
-                button.innerHTML = '<span class="text-lg">📷</span><span class="text-sm">Add Photo</span>';
+                button.innerHTML = '<span class="text-lg">📷</span><span class="text-xs font-medium">Add</span>';
                 button.disabled = false;
             }
         }
@@ -191,23 +195,83 @@ function generateImageHtml(dishName, menuType) {
     const imageKey = getImageKey(dishName, menuType, currentDate);
 
     return `
-        <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3">
+        <div class="border-t border-ios-gray border-opacity-20 pt-3 mt-3" data-image-container="${imageKey}">
             <div class="flex justify-between items-center">
                 <span class="text-ios-gray-2 text-sm font-medium">Photos:</span>
                 <div class="flex gap-2">
-                    <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                    <button class="vote-button swiftui-button px-2 py-2 rounded-lg flex items-center gap-1" 
                             onclick="handleImageUpload('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
                             data-upload-key="${imageKey}">
                         <span class="text-lg">📷</span>
-                        <span class="text-sm font-medium">Add Photo</span>
+                        <span class="text-xs font-medium">Add</span>
                     </button>
-                    <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
-                            onclick="showImages('${dishName.replace(/'/g, "\\'")}', '${menuType}')">
+                    <button class="vote-button swiftui-button px-2 py-2 rounded-lg flex items-center gap-1 hidden" 
+                            onclick="showImages('${dishName.replace(/'/g, "\\'")}', '${menuType}')"
+                            data-view-key="${imageKey}">
                         <span class="text-lg">🖼️</span>
-                        <span class="text-sm font-medium">Photos</span>
+                        <span class="text-xs font-medium" data-image-count="${imageKey}">0</span>
                     </button>
                 </div>
             </div>
         </div>
     `;
+}
+
+// Load image count for a specific item and update the display
+async function loadImagesForItem(imageKey) {
+    if (!IMAGE_CONFIG.enabled) {
+        return;
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), IMAGE_CONFIG.timeout);
+
+        const response = await fetch(`${IMAGE_CONFIG.apiUrl}?key=${encodeURIComponent(imageKey)}`, {
+            method: 'GET',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        let imageCount = 0;
+        if (response.ok) {
+            const data = await response.json();
+            imageCount = data.success ? data.images.length : 0;
+        }
+
+        // Find the image container for this item
+        const imageContainer = document.querySelector(`[data-image-container="${imageKey}"]`);
+        if (imageContainer) {
+            const viewButton = imageContainer.querySelector(`[data-view-key="${imageKey}"]`);
+            const countElement = imageContainer.querySelector(`[data-image-count="${imageKey}"]`);
+            
+            if (viewButton && countElement) {
+                if (imageCount > 0) {
+                    // Show button and update count
+                    viewButton.classList.remove('hidden');
+                    countElement.textContent = imageCount;
+                } else {
+                    // Hide button if no images
+                    viewButton.classList.add('hidden');
+                }
+            }
+        }
+    } catch (error) {
+        console.log('Failed to load image count:', error);
+    }
+}
+
+// Load all visible image counts
+async function refreshImageCounts() {
+    if (!IMAGE_CONFIG.enabled) return;
+    
+    const imageContainers = document.querySelectorAll('[data-image-container]');
+    const loadPromises = Array.from(imageContainers).map(container => {
+        const imageKey = container.getAttribute('data-image-container');
+        return loadImagesForItem(imageKey);
+    });
+    
+    // Load all image counts in parallel
+    await Promise.all(loadPromises);
 }

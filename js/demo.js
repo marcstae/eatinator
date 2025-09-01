@@ -45,6 +45,13 @@ function createMenuItemHtml(item) {
 function initDemo() {
     const container = document.getElementById('menuContainer');
     container.innerHTML = demoMenuItems.map(item => createMenuItemHtml(item)).join('');
+    
+    // Refresh image counts after rendering demo items
+    setTimeout(() => {
+        if (typeof refreshImageCounts === 'function') {
+            refreshImageCounts();
+        }
+    }, 100);
 }
 
 // Start demo when page loads

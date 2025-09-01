@@ -132,8 +132,13 @@ function displayMenu(data) {
     menuContainer.innerHTML = menuHtml;
     menuContainer.classList.add('slide-up');
     
-    // Load server-side vote counts after rendering the menu
-    setTimeout(() => refreshVoteCounts(), 100);
+    // Load server-side vote counts and image counts after rendering the menu
+    setTimeout(() => {
+        refreshVoteCounts();
+        if (typeof refreshImageCounts === 'function') {
+            refreshImageCounts();
+        }
+    }, 100);
 }
 
 // Filter menu items by date and category
