@@ -24,7 +24,7 @@ services:
     image: nginx:alpine
     container_name: eatinator-frontend
     ports:
-      - "8000:80"
+      - "7780:80"
     volumes:
       - ./:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf

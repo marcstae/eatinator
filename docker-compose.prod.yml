@@ -26,7 +26,7 @@ services:
     image: ghcr.io/marcstae/eatinator/frontend:latest
     container_name: eatinator-frontend
     ports:
-      - "8000:80"
+      - "7780:80"
     depends_on:
       - eatinator-api
     restart: unless-stopped
