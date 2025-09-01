@@ -18,6 +18,8 @@ import shutil
 import mimetypes
 from PIL import Image
 import logging
+import requests
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +46,15 @@ ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 RETENTION_HOURS = 24
 MAX_VOTES_PER_USER = 10
 
+# AI Configuration - Only mlvoca with deepseek as requested
+AI_CONFIG = {
+    'url': 'https://mlvoca.com/api/generate',
+    'model': 'deepseek-r1:1.5b',
+    'max_tokens': 300,
+    'temperature': 0.7,
+    'timeout': 10
+}
+
 # Create directories
 DATA_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
@@ -65,6 +76,15 @@ class ImageResponse(BaseModel):
     images: Optional[List[dict]] = None
     message: Optional[str] = None
     filename: Optional[str] = None
+    error: Optional[str] = None
+
+class AiRequest(BaseModel):
+    message: str
+    context: dict
+
+class AiResponse(BaseModel):
+    success: bool
+    response: Optional[str] = None
     error: Optional[str] = None
 
 # Database initialization
@@ -185,6 +205,108 @@ def validate_image_file(file: UploadFile) -> str:
     finally:
         if temp_path.exists():
             temp_path.unlink()
+
+def get_system_prompt(context: dict) -> str:
+    """Generate system prompt with menu context"""
+    language = context.get('language', 'en')
+    items = context.get('items', [])
+    category = context.get('category', 'lunch')
+    restaurant = context.get('restaurant', 'Restaurant')
+    date = context.get('date', '')
+    
+    has_items = len(items) > 0
+    
+    if language == 'de':
+        menu_context = f"Heutige Gerichte ({category}): {', '.join(item['name'] for item in items)}" if has_items else f"Keine Menüdaten verfügbar für {category} am {date}"
+        return f"""Du bist ein persönlicher Menü-Berater für "{restaurant}".
+
+{menu_context}
+
+🎯 FOKUS: Gib persönliche EMPFEHLUNGEN und ALLERGIE-BERATUNG. Nutzer kennen bereits das Menü.
+
+Hauptaufgaben:
+1. 🍽️ EMPFEHLUNGEN: "Was soll ich heute essen?" - Vorschläge basierend auf Geschmack, Gesundheit, Stimmung
+2. 🚫 ALLERGIE-SICHERHEIT: Gluten, Laktose, Nüsse, etc. - bei Unsicherheit: "Frag das Personal vor Ort"
+3. 🥗 ERNÄHRUNGSBERATUNG: Vegetarisch, vegan, kalorienarm, proteinreich
+4. 👨‍🍳 GESCHMACKS-TIPPS: "Wie schmeckt das?" - beschreibe Aromen, Texturen, Zubereitungsart
+
+Antworte kurz (1-3 Sätze), freundlich und praktisch. Keine Menülisten - nur Beratung!"""
+    elif language == 'fr':
+        menu_context = f"Plats du jour ({category}): {', '.join(item['name'] for item in items)}" if has_items else f"Aucune donnée de menu disponible pour {category} le {date}"
+        return f"""Vous êtes un conseiller personnel de menu pour "{restaurant}".
+
+{menu_context}
+
+🎯 FOCUS: Donnez des RECOMMANDATIONS personnelles et des CONSEILS ALLERGIES. Les utilisateurs connaissent déjà le menu.
+
+Tâches principales:
+1. 🍽️ RECOMMANDATIONS: "Que dois-je manger aujourd'hui?" - suggestions basées sur le goût, la santé, l'humeur
+2. 🚫 SÉCURITÉ ALLERGIES: Gluten, lactose, noix, etc. - en cas d'incertitude: "Demandez au personnel sur place"
+3. 🥗 CONSEILS ALIMENTAIRES: Végétarien, végétalien, faible en calories, riche en protéines
+4. 👨‍🍳 CONSEILS GUSTATIFS: "Quel goût cela a-t-il?" - décrivez les arômes, textures, méthodes de cuisson
+
+Répondez brièvement (1-3 phrases), amicalement et pratiquement. Pas de listes de menu - juste des conseils!"""
+    else:
+        menu_context = f"Today's dishes ({category}): {', '.join(item['name'] for item in items)}" if has_items else f"No menu data available for {category} on {date}"
+        return f"""You are a personal menu advisor for "{restaurant}".
+
+{menu_context}
+
+🎯 FOCUS: Give personal RECOMMENDATIONS and ALLERGY GUIDANCE. Users already know the menu.
+
+Main tasks:
+1. 🍽️ RECOMMENDATIONS: "What should I eat today?" - suggestions based on taste, health, mood
+2. 🚫 ALLERGY SAFETY: Gluten, lactose, nuts, etc. - when uncertain: "Ask the staff on-site"
+3. 🥗 DIETARY ADVICE: Vegetarian, vegan, low-calorie, high-protein options
+4. 👨‍🍳 TASTE GUIDANCE: "How does it taste?" - describe flavors, textures, cooking methods
+
+Respond briefly (1-3 sentences), friendly and practical. No menu lists - just advice!"""
+
+async def call_ai_api(message: str, context: dict) -> str:
+    """Call the mlvoca AI API with the message and context"""
+    try:
+        system_prompt = get_system_prompt(context)
+        
+        payload = {
+            'model': AI_CONFIG['model'],
+            'prompt': f"{system_prompt}\n\nUser: {message}\nAssistant:",
+            'stream': False,
+            'options': {
+                'temperature': AI_CONFIG['temperature'],
+                'num_predict': AI_CONFIG['max_tokens']
+            }
+        }
+        
+        response = requests.post(
+            AI_CONFIG['url'],
+            headers={'Content-Type': 'application/json'},
+            json=payload,
+            timeout=AI_CONFIG['timeout']
+        )
+        
+        if response.ok:
+            data = response.json()
+            ai_response = data.get('response', '')
+            if ai_response:
+                return ai_response.strip()
+        
+        # If API fails, provide fallback response
+        return get_fallback_response(message, context)
+        
+    except Exception as e:
+        logger.error(f"AI API error: {e}")
+        return get_fallback_response(message, context)
+
+def get_fallback_response(message: str, context: dict) -> str:
+    """Generate fallback response when AI API is unavailable"""
+    language = context.get('language', 'en')
+    
+    if language == 'de':
+        return 'Entschuldigung, der KI-Assistent ist momentan nicht verfügbar. Gerne helfe ich bei Menü-Empfehlungen, Allergie-Fragen oder Ernährungsberatung! Was interessiert Sie am meisten?'
+    elif language == 'fr':
+        return 'Désolé, l\'assistant IA n\'est pas disponible pour le moment. Je serais heureux de vous aider avec des recommandations de menu, des questions d\'allergie ou des conseils diététiques! Qu\'est-ce qui vous intéresse le plus?'
+    else:
+        return 'Sorry, the AI assistant is currently unavailable. I\'m happy to help with menu recommendations, allergy questions, or dietary advice! What interests you most?'
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -484,6 +606,61 @@ async def upload_image(
 ):
     """Upload an image for a dish (legacy endpoint)"""
     return await upload_image_rest(key, image)
+
+# AI API endpoints
+@app.post("/api/ai")
+async def ai_chat(ai_request: AiRequest):
+    """Process AI chat request"""
+    try:
+        if not ai_request.message.strip():
+            raise HTTPException(400, "Message cannot be empty")
+        
+        response_text = await call_ai_api(ai_request.message, ai_request.context)
+        
+        return {"success": True, "response": response_text}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+        return {"success": False, "error": f"Failed to process AI request: {str(e)}"}
+
+@app.get("/api/ai/health")
+async def ai_health():
+    """Check AI API health"""
+    try:
+        # Test the AI API with a simple request
+        test_context = {
+            'language': 'en',
+            'items': [],
+            'category': 'test',
+            'restaurant': 'Test Restaurant',
+            'date': 'today'
+        }
+        
+        response = requests.post(
+            AI_CONFIG['url'],
+            headers={'Content-Type': 'application/json'},
+            json={
+                'model': AI_CONFIG['model'],
+                'prompt': 'Test prompt',
+                'stream': False,
+                'options': {
+                    'temperature': 0.1,
+                    'num_predict': 10
+                }
+            },
+            timeout=5
+        )
+        
+        if response.ok:
+            return {"status": "healthy", "ai_service": "available"}
+        else:
+            return {"status": "degraded", "ai_service": "unavailable", "fallback": "active"}
+    
+    except Exception as e:
+        logger.warning(f"AI health check failed: {e}")
+        return {"status": "degraded", "ai_service": "unavailable", "fallback": "active"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -2,31 +2,9 @@
 
 // AI Assistant configuration
 const AI_CONFIG = {
-    enabled: true,
-    // Multiple API endpoints to try (fallback approach)
-    apiEndpoints: [
-        {
-            url: 'https://mlvoca.com/api/generate',
-            model: 'deepseek-r1:1.5b',
-            headers: { 'Content-Type': 'application/json' },
-            isOllama: true
-        },
-        {
-            url: 'https://api.pawan.krd/cosmosrp/v1/chat/completions',
-            model: 'gpt-3.5-turbo',
-            headers: { 'Authorization': 'Bearer pk-' }
-        },
-        {
-            url: 'https://api.together.xyz/v1/chat/completions', 
-            model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
-            headers: { 'Authorization': 'Bearer free' }
-        },
-        {
-            url: 'https://api.openai.com/v1/chat/completions',
-            model: 'gpt-3.5-turbo',
-            headers: { 'Authorization': 'Bearer demo' }
-        }
-    ],
+    enabled: true, // Allow AI feature to be available, but it's opt-in via user settings
+    // Backend API endpoint (replaces direct external API calls)
+    apiUrl: '/api/ai',
     maxTokens: 300,
     temperature: 0.7,
     timeout: 10000,
@@ -50,14 +28,17 @@ function initAiAssistant() {
     // Ensure chat starts hidden for minimal screen usage
     aiChatVisible = false;
     
-    // Create AI chat interface (starts hidden by default)
-    createAiChatInterface();
-    
-    // Add FAB button
-    createAiFab();
-    
-    // Save the default hidden state
-    saveAiSettings();
+    // Only create AI interface if user has opted in
+    if (isAiEnabled()) {
+        // Create AI chat interface (starts hidden by default)
+        createAiChatInterface();
+        
+        // Add FAB button
+        createAiFab();
+        
+        // Save the default hidden state
+        saveAiSettings();
+    }
 }
 
 // Load AI settings from localStorage
@@ -110,12 +91,9 @@ function detectUserLanguage() {
 
 // Create floating action button (FAB) for AI chat
 function createAiFab() {
-    // Check if AI should be visible (user preference)
-    const aiSettings = JSON.parse(localStorage.getItem(AI_CONFIG.storageKey) || '{}');
-    const aiFeatureEnabled = aiSettings.featureEnabled !== false; // Default to enabled
-    
-    if (!aiFeatureEnabled) {
-        return; // Don't show FAB if user disabled the feature
+    // Check if AI should be visible (user preference and global config)
+    if (!isAiEnabled()) {
+        return; // Don't show FAB if AI is not enabled
     }
     
     const fab = document.createElement('button');
@@ -183,10 +161,98 @@ function addAiSettingsButton() {
     }
 }
 
+// Show AI opt-in modal for users to enable the feature
+function showAiOptInModal() {
+    const aiSettings = JSON.parse(localStorage.getItem(AI_CONFIG.storageKey) || '{}');
+    const featureEnabled = aiSettings.featureEnabled === true;
+    
+    // If already enabled, show normal settings
+    if (featureEnabled) {
+        showAiSettings();
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'aiOptInModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.onclick = (e) => {
+        if (e.target === modal) hideAiOptInModal();
+    };
+    
+    modal.innerHTML = `
+        <div class="bg-ios-dark-2 rounded-lg p-6 m-4 max-w-sm w-full">
+            <h3 class="text-lg font-semibold text-white mb-4">🤖 AI Menu Assistant</h3>
+            
+            <div class="space-y-4">
+                <p class="text-ios-gray-2 text-sm">
+                    Enable the AI assistant to get personalized menu recommendations, 
+                    allergy advice, and dietary guidance.
+                </p>
+                
+                <div class="bg-ios-dark-3 p-3 rounded-lg text-xs text-ios-gray-2">
+                    <p class="font-medium mb-2">Features:</p>
+                    <ul class="space-y-1">
+                        <li>• Personalized recommendations</li>
+                        <li>• Allergy and dietary advice</li>
+                        <li>• Taste and ingredient information</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-yellow-900/20 border border-yellow-600/30 p-3 rounded-lg text-xs text-yellow-200">
+                    <p>Note: AI responses may not be 100% accurate. Always verify allergy information with restaurant staff.</p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3 mt-6">
+                <button onclick="hideAiOptInModal()" 
+                        class="flex-1 py-2 px-4 rounded-lg text-ios-gray-2 bg-ios-dark-4 hover:bg-ios-dark-5 transition-colors">
+                    Maybe Later
+                </button>
+                <button onclick="enableAiAssistant()" 
+                        class="flex-1 py-2 px-4 rounded-lg text-white bg-ios-blue hover:bg-blue-600 transition-colors">
+                    Enable AI
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Hide AI opt-in modal
+function hideAiOptInModal() {
+    const modal = document.getElementById('aiOptInModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Enable AI assistant after user opts in
+function enableAiAssistant() {
+    const aiSettings = {
+        featureEnabled: true,
+        language: detectBrowserLanguage(),
+        chatVisible: false
+    };
+    
+    localStorage.setItem(AI_CONFIG.storageKey, JSON.stringify(aiSettings));
+    
+    // Now create the AI interface
+    createAiChatInterface();
+    createAiFab();
+    
+    hideAiOptInModal();
+    
+    // Show welcome message or settings
+    setTimeout(() => {
+        showAiSettings();
+    }, 500);
+}
+
 // Show AI settings modal
 function showAiSettings() {
     const aiSettings = JSON.parse(localStorage.getItem(AI_CONFIG.storageKey) || '{}');
-    const featureEnabled = aiSettings.featureEnabled !== false;
+    const featureEnabled = aiSettings.featureEnabled === true; // Default to false (opt-in)
     
     const modal = document.createElement('div');
     modal.id = 'aiSettingsModal';
@@ -512,144 +578,40 @@ function getCurrentMenuContext() {
     };
 }
 
-// Call AI API with fallback endpoints
+// Call AI API via backend
 async function callAiApi(message, context) {
-    // Detect language from user message first
-    const detectedLang = detectMessageLanguage(message);
-    context.language = detectedLang;
-    
-    const systemPrompt = getSystemPrompt(context);
-    
-    // Try each API endpoint until one works
-    for (let i = 0; i < AI_CONFIG.apiEndpoints.length; i++) {
-        const endpoint = AI_CONFIG.apiEndpoints[i];
+    try {
+        // Detect language from user message first
+        const detectedLang = detectMessageLanguage(message);
+        context.language = detectedLang;
         
-        try {
-            let payload, response;
-            
-            if (endpoint.isOllama) {
-                // Ollama-style API (mlvoca.com) - optimized based on documentation
-                payload = {
-                    model: endpoint.model,
-                    prompt: `${systemPrompt}\n\nUser: ${message}\nAssistant:`,
-                    stream: false,
-                    options: {
-                        temperature: AI_CONFIG.temperature,
-                        num_predict: AI_CONFIG.maxTokens
-                    }
-                };
+        const response = await fetch(AI_CONFIG.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                context: context
+            }),
+            signal: AbortSignal.timeout(AI_CONFIG.timeout)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.response) {
+                return data.response;
             } else {
-                // OpenAI-style API
-                payload = {
-                    model: endpoint.model,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: systemPrompt
-                        },
-                        {
-                            role: 'user',
-                            content: message
-                        }
-                    ],
-                    max_tokens: AI_CONFIG.maxTokens,
-                    temperature: AI_CONFIG.temperature
-                };
+                throw new Error(data.error || 'AI API returned no response');
             }
-            
-            response = await fetch(endpoint.url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...endpoint.headers
-                },
-                body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(AI_CONFIG.timeout)
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                let aiResponse;
-                
-                if (endpoint.isOllama) {
-                    aiResponse = data.response;
-                } else {
-                    aiResponse = data.choices?.[0]?.message?.content;
-                }
-                
-                if (aiResponse) {
-                    return aiResponse.trim();
-                }
-            }
-        } catch (error) {
-            console.log(`API endpoint ${i + 1} failed:`, error.message);
-            // Continue to next endpoint
+        } else {
+            throw new Error(`AI API responded with status ${response.status}`);
         }
-    }
-    
-    // If all APIs fail, provide a fallback response
-    return generateFallbackResponse(message, context);
-}
-
-// Generate system prompt with menu context - focused on recommendations not listing
-function getSystemPrompt(context) {
-    const language = context.language;
-    const hasItems = context.items && context.items.length > 0;
-    
-    if (language === 'de') {
-        const menuContext = hasItems ? 
-            `Heutige Gerichte (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
-            `Keine Menüdaten verfügbar für ${context.category} am ${context.date}`;
-            
-        return `Du bist ein persönlicher Menü-Berater für "${context.restaurant}". 
         
-${menuContext}
-
-🎯 FOKUS: Gib persönliche EMPFEHLUNGEN und ALLERGIE-BERATUNG. Nutzer kennen bereits das Menü.
-
-Hauptaufgaben:
-1. 🍽️ EMPFEHLUNGEN: "Was soll ich heute essen?" - Vorschläge basierend auf Geschmack, Gesundheit, Stimmung
-2. 🚫 ALLERGIE-SICHERHEIT: Gluten, Laktose, Nüsse, etc. - bei Unsicherheit: "Frag das Personal vor Ort"
-3. 🥗 ERNÄHRUNGSBERATUNG: Vegetarisch, vegan, kalorienarm, proteinreich
-4. 👨‍🍳 GESCHMACKS-TIPPS: "Wie schmeckt das?" - beschreibe Aromen, Texturen, Zubereitungsart
-
-Antworte kurz (1-3 Sätze), freundlich und praktisch. Keine Menülisten - nur Beratung!`;
-    } else if (language === 'fr') {
-        const menuContext = hasItems ? 
-            `Plats du jour (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
-            `Aucune donnée de menu disponible pour ${context.category} le ${context.date}`;
-            
-        return `Vous êtes un conseiller personnel de menu pour "${context.restaurant}".
-        
-${menuContext}
-
-🎯 FOCUS: Donnez des RECOMMANDATIONS personnelles et des CONSEILS sur les ALLERGIES. Les utilisateurs connaissent déjà le menu.
-
-Tâches principales:
-1. 🍽️ RECOMMANDATIONS: "Que dois-je manger aujourd'hui?" - suggestions basées sur le goût, la santé, l'humeur
-2. 🚫 SÉCURITÉ ALLERGIQUE: Gluten, lactose, noix, etc. - en cas de doute: "Demandez au personnel sur place"
-3. 🥗 CONSEILS NUTRITIONNELS: Végétarien, végétalien, faible en calories, riche en protéines
-4. 👨‍🍳 CONSEILS GUSTATIFS: "Quel goût cela a-t-il?" - décrivez les arômes, textures, méthodes de cuisson
-
-Répondez brièvement (1-3 phrases), amicalement et pratiquement. Pas de listes de menu - juste des conseils!`;
-    } else {
-        const menuContext = hasItems ? 
-            `Today's dishes (${context.category}): ${context.items.map(item => item.name).join(', ')}` :
-            `No menu data available for ${context.category} on ${context.date}`;
-            
-        return `You are a personal menu advisor for "${context.restaurant}".
-        
-${menuContext}
-
-🎯 FOCUS: Give personal RECOMMENDATIONS and ALLERGY GUIDANCE. Users already know the menu.
-
-Main tasks:
-1. 🍽️ RECOMMENDATIONS: "What should I eat today?" - suggestions based on taste, health, mood
-2. 🚫 ALLERGY SAFETY: Gluten, lactose, nuts, etc. - when uncertain: "Ask the staff on-site"
-3. 🥗 DIETARY ADVICE: Vegetarian, vegan, low-calorie, high-protein options
-4. 👨‍🍳 TASTE GUIDANCE: "How does it taste?" - describe flavors, textures, cooking methods
-
-Respond briefly (1-3 sentences), friendly and practical. No menu lists - just advice!`;
+    } catch (error) {
+        console.log(`AI API failed: ${error.message}`);
+        // Return fallback response
+        return generateFallbackResponse(message, context);
     }
 }
 
@@ -843,5 +805,8 @@ function generateFallbackResponse(message, context) {
 
 // Check if AI assistant is enabled
 function isAiEnabled() {
-    return AI_CONFIG.enabled;
+    // Check both global config and user preference
+    const aiSettings = JSON.parse(localStorage.getItem(AI_CONFIG.storageKey) || '{}');
+    // Default to false (opt-in) if not explicitly enabled by user
+    return AI_CONFIG.enabled && (aiSettings.featureEnabled === true);
 }
