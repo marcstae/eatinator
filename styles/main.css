@@ -166,3 +166,63 @@ body {
 .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* AI Assistant Styles */
+#aiFab {
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#aiFab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 30px rgba(0, 122, 255, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#aiFab:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.2), 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fab-pulse {
+    animation: fabPulse 2s ease-in-out infinite;
+}
+
+@keyframes fabPulse {
+    0%, 100% {
+        box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 8px 25px rgba(0, 122, 255, 0.6), 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 8px rgba(0, 122, 255, 0.1);
+    }
+}
+
+#aiChatContainer {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+}
+
+.ai-message-fade-in {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Compact chat styling */
+.ai-chat-compact {
+    height: 120px !important;
+    backdrop-filter: blur(30px);
+}
+
+.ai-chat-full {
+    height: 40vh !important;
+}

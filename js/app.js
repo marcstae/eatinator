@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', function() {
     selectDay(currentDate, dayNames[dayOfWeek]);
     loadMenu();
     
+    // Initialize AI Assistant if enabled
+    if (typeof initAiAssistant === 'function' && isAiEnabled()) {
+        initAiAssistant();
+    }
+    
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('data:text/javascript,console.log("SW loaded")');
