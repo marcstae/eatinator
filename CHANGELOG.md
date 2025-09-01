@@ -1,3 +1,12 @@
+# [1.1.0](https://github.com/marcstae/eatinator/compare/v1.0.3...v1.1.0) (2025-09-01)
+
+
+### Features
+
+* Add Cloudflare Turnstile support for backend write operations ([2d7f40b](https://github.com/marcstae/eatinator/commit/2d7f40bf0a21d213d3d48398bfe80206b322478f))
+* add frontend Turnstile integration and documentation ([29fc1c9](https://github.com/marcstae/eatinator/commit/29fc1c9ca560a6576622ad98cd6922e242972d1f))
+* add turnstile verification to backend API endpoints ([9960aa5](https://github.com/marcstae/eatinator/commit/9960aa5329c4024b9fc21449e8fd8f79b35ac326))
+
 ## [1.0.3](https://github.com/marcstae/eatinator/compare/v1.0.2...v1.0.3) (2025-09-01)
 
 
