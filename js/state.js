@@ -24,9 +24,16 @@ function getDefaultMealCategory() {
     }
 }
 
+// Check for kiosk mode from URL parameter
+function isKioskMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.has('kiosk');
+}
+
 // App state variables
 let currentDate = new Date().toISOString().split('T')[0];
 let currentCategory = getDefaultMealCategory(); // Auto-select based on time
 let currentWeek = Math.ceil(((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 + 1) / 7);
 let currentYear = new Date().getFullYear();
 let menuData = null;
+let kioskMode = isKioskMode();
