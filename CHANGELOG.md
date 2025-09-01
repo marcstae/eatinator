@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/marcstae/eatinator/compare/v1.0.0...v1.0.1) (2025-09-01)
+
+
+### Bug Fixes
+
+* package tailwind with repo ([fef0b9a](https://github.com/marcstae/eatinator/commit/fef0b9a4a64d8ae6e7985377874d456c6cf1ddaf))
+
 # 1.0.0 (2025-08-31)
 
 
