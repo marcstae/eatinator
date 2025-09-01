@@ -197,17 +197,17 @@ async def startup_event():
 async def health_check():
     return {"status": "healthy", "service": "eatinator-api"}
 
-# Voting endpoints
-@app.get("/api/votes.php")
-async def get_votes(key: str = Query(..., description="Vote key")):
-    """Get votes for a specific key"""
+# REST-compliant voting endpoints
+@app.get("/api/votes/{vote_key}")
+async def get_votes_rest(vote_key: str):
+    """Get votes for a specific key (REST endpoint)"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute(
             "SELECT good, neutral, bad FROM votes WHERE vote_key = ?",
-            (key,)
+            (vote_key,)
         )
         result = cursor.fetchone()
         conn.close()
@@ -223,13 +223,15 @@ async def get_votes(key: str = Query(..., description="Vote key")):
         logger.error(f"Error getting votes: {e}")
         raise HTTPException(400, f"Failed to get votes: {str(e)}")
 
-@app.post("/api/votes.php")
-async def cast_vote(vote_request: VoteRequest):
-    """Cast a vote"""
+class RestVoteRequest(BaseModel):
+    key: str
+    voteType: str
+    userId: str
+
+@app.post("/api/votes")
+async def cast_vote_rest(vote_request: RestVoteRequest):
+    """Cast a vote (REST endpoint)"""
     try:
-        if vote_request.action != "vote":
-            raise HTTPException(400, "Invalid action")
-        
         if not all([vote_request.key, vote_request.voteType, vote_request.userId]):
             raise HTTPException(400, "Missing required parameters")
         
@@ -296,43 +298,40 @@ async def cast_vote(vote_request: VoteRequest):
         logger.error(f"Error casting vote: {e}")
         raise HTTPException(400, f"Failed to save vote: {str(e)}")
 
-# Image endpoints
-@app.get("/api/images.php")
-async def get_images(
-    key: Optional[str] = Query(None, description="Image key"),
-    action: Optional[str] = Query(None, description="Action"),
-    file: Optional[str] = Query(None, description="File name")
-):
-    """Get images for a dish or serve a specific image file"""
+# Legacy PHP-style voting endpoints (for backward compatibility)
+@app.get("/api/votes.php")
+async def get_votes(key: str = Query(..., description="Vote key")):
+    """Get votes for a specific key (legacy endpoint)"""
+    return await get_votes_rest(key)
+
+@app.post("/api/votes.php")
+async def cast_vote(vote_request: VoteRequest):
+    """Cast a vote (legacy endpoint)"""
+    try:
+        if vote_request.action != "vote":
+            raise HTTPException(400, "Invalid action")
+        
+        # Convert to REST format and delegate
+        rest_request = RestVoteRequest(
+            key=vote_request.key,
+            voteType=vote_request.voteType,
+            userId=vote_request.userId
+        )
+        return await cast_vote_rest(rest_request)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error casting vote: {e}")
+        raise HTTPException(400, f"Failed to save vote: {str(e)}")
+
+# REST-compliant image endpoints
+@app.get("/api/images/{image_key}")
+async def get_images_rest(image_key: str):
+    """Get images for a dish (REST endpoint)"""
     try:
         # Clean up old images on every request
         cleanup_old_images()
-        
-        # If action is 'view', serve the image file
-        if action == "view":
-            if not key or not file:
-                raise HTTPException(400, "Key and filename are required")
-            
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT file_path FROM images WHERE dish_key = ? AND filename = ?",
-                (key, file)
-            )
-            result = cursor.fetchone()
-            conn.close()
-            
-            if not result or not Path(result["file_path"]).exists():
-                raise HTTPException(404, "Image not found")
-            
-            return FileResponse(
-                result["file_path"],
-                media_type=mimetypes.guess_type(file)[0] or "image/jpeg"
-            )
-        
-        # Get images for a specific dish
-        if not key:
-            raise HTTPException(400, "Dish key is required")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -341,7 +340,7 @@ async def get_images(
             FROM images 
             WHERE dish_key = ? AND file_path IS NOT NULL
             ORDER BY upload_time DESC
-        ''', (key,))
+        ''', (image_key,))
         
         results = cursor.fetchall()
         conn.close()
@@ -355,23 +354,51 @@ async def get_images(
                     "originalName": row["original_name"],
                     "uploadTime": row["upload_time"],
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row["upload_time"])),
-                    "url": f"/api/images.php?action=view&key={key}&file={row['filename']}"
+                    "url": f"/api/images/{image_key}/{row['filename']}"
                 })
         
         return {"success": True, "images": images}
     
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error getting images: {e}")
         raise HTTPException(400, f"Failed to get images: {str(e)}")
 
-@app.post("/api/images.php")
-async def upload_image(
+@app.get("/api/images/{image_key}/{filename}")
+async def get_image_file_rest(image_key: str, filename: str):
+    """Serve a specific image file (REST endpoint)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT file_path FROM images WHERE dish_key = ? AND filename = ?",
+            (image_key, filename)
+        )
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result or not Path(result["file_path"]).exists():
+            raise HTTPException(404, "Image not found")
+        
+        return FileResponse(
+            result["file_path"],
+            media_type=mimetypes.guess_type(filename)[0] or "image/jpeg"
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving image: {e}")
+        raise HTTPException(400, f"Failed to serve image: {str(e)}")
+
+class RestImageUpload(BaseModel):
+    key: str
+
+@app.post("/api/images")
+async def upload_image_rest(
     key: str = Form(..., description="Image key"),
     image: UploadFile = File(..., description="Image file")
 ):
-    """Upload an image for a dish"""
+    """Upload an image for a dish (REST endpoint)"""
     try:
         # Validate file size
         if not image.size:
@@ -422,6 +449,41 @@ async def upload_image(
     except Exception as e:
         logger.error(f"Error uploading image: {e}")
         raise HTTPException(400, f"Failed to save image: {str(e)}")
+
+# Legacy PHP-style image endpoints (for backward compatibility)
+@app.get("/api/images.php")
+async def get_images(
+    key: Optional[str] = Query(None, description="Image key"),
+    action: Optional[str] = Query(None, description="Action"),
+    file: Optional[str] = Query(None, description="File name")
+):
+    """Get images for a dish or serve a specific image file (legacy endpoint)"""
+    try:
+        # If action is 'view', serve the image file
+        if action == "view":
+            if not key or not file:
+                raise HTTPException(400, "Key and filename are required")
+            return await get_image_file_rest(key, file)
+        
+        # Get images for a specific dish
+        if not key:
+            raise HTTPException(400, "Dish key is required")
+        
+        return await get_images_rest(key)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in legacy images endpoint: {e}")
+        raise HTTPException(400, f"Failed to process request: {str(e)}")
+
+@app.post("/api/images.php")
+async def upload_image(
+    key: str = Form(..., description="Image key"),
+    image: UploadFile = File(..., description="Image file")
+):
+    """Upload an image for a dish (legacy endpoint)"""
+    return await upload_image_rest(key, image)
 
 if __name__ == "__main__":
     import uvicorn

@@ -35,14 +35,36 @@ The new backend is built with:
 
 ### Voting
 
-#### GET /api/votes.php
+**REST Endpoints (Recommended):**
+
+#### GET /api/votes/{vote_key}
 Get votes for a specific item.
+```bash
+curl "http://localhost:5694/api/votes/vote_key"
+```
+
+#### POST /api/votes
+Cast a vote for an item.
+```bash
+curl -X POST "http://localhost:5694/api/votes" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "vote_key", 
+    "voteType": "good",
+    "userId": "user_123"
+  }'
+```
+
+**Legacy Endpoints (Backward Compatibility):**
+
+#### GET /api/votes.php
+Get votes for a specific item (legacy).
 ```bash
 curl "http://localhost:5694/api/votes.php?key=vote_key"
 ```
 
 #### POST /api/votes.php
-Cast a vote for an item.
+Cast a vote for an item (legacy).
 ```bash
 curl -X POST "http://localhost:5694/api/votes.php" \
   -H "Content-Type: application/json" \
@@ -56,20 +78,44 @@ curl -X POST "http://localhost:5694/api/votes.php" \
 
 ### Images
 
-#### GET /api/images.php
+**REST Endpoints (Recommended):**
+
+#### GET /api/images/{image_key}
 Get images for a dish.
+```bash
+curl "http://localhost:5694/api/images/image_key"
+```
+
+#### GET /api/images/{image_key}/{filename}
+Serve an image file.
+```bash
+curl "http://localhost:5694/api/images/image_key/filename.jpg"
+```
+
+#### POST /api/images
+Upload an image.
+```bash
+curl -X POST "http://localhost:5694/api/images" \
+  -F "key=image_key" \
+  -F "image=@image.jpg"
+```
+
+**Legacy Endpoints (Backward Compatibility):**
+
+#### GET /api/images.php
+Get images for a dish (legacy).
 ```bash
 curl "http://localhost:5694/api/images.php?key=image_key"
 ```
 
 #### GET /api/images.php?action=view
-Serve an image file.
+Serve an image file (legacy).
 ```bash
 curl "http://localhost:5694/api/images.php?action=view&key=image_key&file=filename.jpg"
 ```
 
 #### POST /api/images.php
-Upload an image.
+Upload an image (legacy).
 ```bash
 curl -X POST "http://localhost:5694/api/images.php" \
   -F "key=image_key" \
