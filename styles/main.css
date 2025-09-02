@@ -218,6 +218,17 @@ body {
     box-shadow: 0 8px 25px rgba(0, 122, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
     background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Adjust position when chat is open to avoid keyboard overlap */
+    z-index: 40;
+}
+
+#aiFab.chat-open {
+    /* Move FAB to top-right when chat is open */
+    bottom: auto !important;
+    top: 4rem !important;
+    right: 1rem !important;
+    z-index: 45;
+    opacity: 0.8;
 }
 
 #aiFab:hover {
@@ -251,6 +262,27 @@ body {
 #aiChatContainer {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(20px);
+    /* Ensure chat container respects keyboard safe area */
+    padding-bottom: env(keyboard-inset-height, 0px);
+    bottom: env(keyboard-inset-height, 0px);
+}
+
+/* Mobile keyboard handling */
+@media (max-width: 768px) {
+    #aiChatContainer {
+        /* Account for mobile keyboard */
+        bottom: 0;
+        padding-bottom: env(keyboard-inset-height, env(safe-area-inset-bottom, 0px));
+    }
+    
+    #aiFab.chat-open {
+        /* Better mobile positioning when chat is open */
+        top: 6rem !important;
+        right: 0.5rem !important;
+        width: 3rem !important;
+        height: 3rem !important;
+        opacity: 0.9;
+    }
 }
 
 .ai-message-fade-in {
@@ -276,5 +308,7 @@ body {
 
 .ai-chat-full {
     height: 40vh !important;
+    /* Ensure full height doesn't interfere with keyboard */
+    max-height: calc(100vh - env(keyboard-inset-height, 0px) - 2rem);
 }
 }

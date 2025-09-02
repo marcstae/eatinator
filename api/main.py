@@ -4,7 +4,7 @@ Replaces PHP implementation with Python FastAPI + SQLite
 """
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
@@ -20,6 +20,7 @@ from PIL import Image
 import logging
 import requests
 import json
+import asyncio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -57,7 +58,7 @@ AI_CONFIG = {
     'model': 'deepseek-r1:1.5b',
     'max_tokens': 300,
     'temperature': 0.7,
-    'timeout': 10
+    'timeout': 60  # Increased to 60 seconds for AI processing
 }
 
 # Create directories
@@ -328,13 +329,74 @@ async def call_ai_api(message: str, context: dict) -> str:
             ai_response = data.get('response', '')
             if ai_response:
                 return ai_response.strip()
+            else:
+                raise Exception("AI API returned empty response")
+        else:
+            raise Exception(f"AI API responded with status {response.status_code}: {response.text}")
         
-        # If API fails, provide fallback response
-        return get_fallback_response(message, context)
-        
+    except requests.exceptions.Timeout:
+        logger.error("AI API timeout")
+        raise Exception("AI request timed out - the service may be overloaded. Please try again.")
+    except requests.exceptions.ConnectionError:
+        logger.error("AI API connection error")
+        raise Exception("Could not connect to AI service. Please check your internet connection.")
     except Exception as e:
         logger.error(f"AI API error: {e}")
-        return get_fallback_response(message, context)
+        raise
+
+async def stream_ai_api(message: str, context: dict):
+    """Stream AI API response"""
+    try:
+        system_prompt = get_system_prompt(context)
+        
+        payload = {
+            'model': AI_CONFIG['model'],
+            'prompt': f"{system_prompt}\n\nUser: {message}\nAssistant:",
+            'stream': True,  # Enable streaming
+            'options': {
+                'temperature': AI_CONFIG['temperature'],
+                'num_predict': AI_CONFIG['max_tokens']
+            }
+        }
+        
+        # Use streaming request
+        with requests.post(
+            AI_CONFIG['url'],
+            headers={'Content-Type': 'application/json'},
+            json=payload,
+            timeout=AI_CONFIG['timeout'],
+            stream=True
+        ) as response:
+            if not response.ok:
+                raise Exception(f"AI API responded with status {response.status_code}: {response.text}")
+            
+            # Stream the response
+            for line in response.iter_lines(decode_unicode=True):
+                if line:
+                    try:
+                        # Parse streaming JSON response
+                        data = json.loads(line)
+                        if 'response' in data:
+                            chunk = data['response']
+                            if chunk:
+                                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                        elif data.get('done'):
+                            # End of stream
+                            yield f"data: {json.dumps({'done': True})}\n\n"
+                            break
+                    except json.JSONDecodeError:
+                        # Skip malformed JSON lines
+                        continue
+                        
+    except requests.exceptions.Timeout:
+        logger.error("AI API timeout")
+        yield f"data: {json.dumps({'error': 'AI request timed out - the service may be overloaded. Please try again.'})}\n\n"
+    except requests.exceptions.ConnectionError:
+        logger.error("AI API connection error")
+        yield f"data: {json.dumps({'error': 'Could not connect to AI service. Please check your internet connection.'})}\n\n"
+    except Exception as e:
+        logger.error(f"AI API streaming error: {e}")
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 def get_fallback_response(message: str, context: dict) -> str:
     """Generate fallback response when AI API is unavailable"""
@@ -667,7 +729,7 @@ async def upload_image(
 # AI API endpoints
 @app.post("/api/ai")
 async def ai_chat(ai_request: AiRequest, request: Request):
-    """Process AI chat request"""
+    """Process AI chat request with streaming support"""
     try:
         # Verify Turnstile token if enabled
         if TURNSTILE_ENABLED:
@@ -678,15 +740,35 @@ async def ai_chat(ai_request: AiRequest, request: Request):
         if not ai_request.message.strip():
             raise HTTPException(400, "Message cannot be empty")
         
-        response_text = await call_ai_api(ai_request.message, ai_request.context)
-        
-        return {"success": True, "response": response_text}
+        # Check if client accepts streaming
+        accept = request.headers.get("accept", "")
+        if "text/event-stream" in accept:
+            # Return streaming response
+            return StreamingResponse(
+                stream_ai_api(ai_request.message, ai_request.context),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"  # Disable nginx buffering
+                }
+            )
+        else:
+            # Return traditional response for backward compatibility
+            try:
+                response_text = await call_ai_api(ai_request.message, ai_request.context)
+                return {"success": True, "response": response_text}
+            except Exception as e:
+                # Return actual error message instead of fallback
+                error_msg = str(e)
+                logger.error(f"AI chat error: {error_msg}")
+                return {"success": False, "error": error_msg}
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI chat error: {e}")
-        return {"success": False, "error": f"Failed to process AI request: {str(e)}"}
+        logger.error(f"Unexpected AI chat error: {e}")
+        return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 @app.get("/api/ai/health")
 async def ai_health():
