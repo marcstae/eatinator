@@ -28,7 +28,8 @@ function createMenuItemHtml(item) {
     
     // For demo purposes, simulate voting being active to show inline image buttons
     const votingHtml = generateDemoVotingHtml(item.dishName, item.menuType);
-    const imageHtml = generateImageHtml(item.dishName, item.menuType);
+    // Don't show standalone image buttons - they only appear with voting buttons
+    const imageHtml = '';
 
     return `
         <div class="swiftui-card p-4 rounded-xl">
@@ -39,7 +40,7 @@ function createMenuItemHtml(item) {
             <div class="flex flex-wrap gap-2 mb-3">
                 ${menuTypeBadge}
             </div>
-            ${votingHtml || imageHtml}
+            ${votingHtml}
         </div>
     `;
 }
@@ -48,17 +49,20 @@ function createMenuItemHtml(item) {
 function generateDemoVotingHtml(dishName, menuType) {
     const imageKey = getImageKey(dishName, menuType, currentDate);
     
-    // Demo vote buttons (disabled for demo)
+    // Demo vote buttons (enabled for demo to simulate active voting state)
     const voteButtons = `
-        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+        <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                onclick="alert('Demo: Voting functionality is disabled in demo mode')">
             <span class="text-lg">👍</span>
             <span class="text-sm font-medium">0</span>
         </button>
-        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+        <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                onclick="alert('Demo: Voting functionality is disabled in demo mode')">
             <span class="text-lg">😐</span>
             <span class="text-sm font-medium">0</span>
         </button>
-        <button class="vote-button-disabled swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" disabled>
+        <button class="vote-button swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+                onclick="alert('Demo: Voting functionality is disabled in demo mode')">
             <span class="text-lg">👎</span>
             <span class="text-sm font-medium">0</span>
         </button>

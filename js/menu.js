@@ -240,8 +240,8 @@ function createMenuItemHtml(item) {
     // Generate voting HTML if voting is active (this now includes image button)
     const votingHtml = generateVotingHtml(dishName, menulineLabel);
     
-    // Generate image upload/view HTML only when voting is not active
-    const imageHtml = !isVotingActive() && IMAGE_CONFIG.enabled ? generateImageHtml(dishName, menulineLabel) : '';
+    // Don't show standalone image buttons - they only appear with voting buttons when voting is active
+    const imageHtml = '';
 
     return `
         <div class="swiftui-card p-4 rounded-xl ${votingHtml || imageHtml ? '' : 'swiftui-button'}" ${votingHtml || imageHtml ? '' : `onclick="showItemDetails('${dishName.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}', '${menulineLabel.replace(/'/g, '\\\'').replace(/"/g, '&quot;')}')"`}>
