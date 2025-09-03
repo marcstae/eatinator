@@ -1,12 +1,52 @@
 // Voting system functionality
 
-// Check if voting is currently active (only for current day and current meal time)
+// Voting time windows for each meal
+const VOTING_TIMES = {
+    breakfast: { start: 6 * 60, end: 7 * 60 + 15 }, // 06:00 - 07:15
+    lunch: { start: 11 * 60 + 30, end: 13 * 60 }, // 11:30 - 13:00
+    dinner: { start: 17 * 60 + 30, end: 19 * 60 } // 17:30 - 19:00
+};
+
+// Check if current time falls within voting window for a meal category
+function isVotingTimeActive(category = currentCategory) {
+    const now = new Date();
+    const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const votingWindow = VOTING_TIMES[category];
+    if (!votingWindow) return false;
+    
+    return currentTimeMinutes >= votingWindow.start && currentTimeMinutes <= votingWindow.end;
+}
+
+// Get voting time info for display in popups
+function getVotingTimeInfo(category = currentCategory) {
+    const votingWindow = VOTING_TIMES[category];
+    if (!votingWindow) return null;
+    
+    const startHour = Math.floor(votingWindow.start / 60);
+    const startMin = votingWindow.start % 60;
+    const endHour = Math.floor(votingWindow.end / 60);
+    const endMin = votingWindow.end % 60;
+    
+    const formatTime = (hour, min) => `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+    
+    return {
+        category,
+        startTime: formatTime(startHour, startMin),
+        endTime: formatTime(endHour, endMin),
+        isActive: isVotingTimeActive(category)
+    };
+}
+
+// Check if voting is currently active (today's menu, current meal, and within voting time)
 function isVotingActive() {
     const today = new Date().toISOString().split('T')[0];
     const currentMealCategory = getDefaultMealCategory();
     
-    // Voting is only active when viewing today's menu for the current meal period
-    return currentDate === today && currentCategory === currentMealCategory;
+    // Voting is only active when viewing today's menu for the current meal period and within voting time
+    return currentDate === today && 
+           currentCategory === currentMealCategory && 
+           isVotingTimeActive(currentCategory);
 }
 
 // Generate a unique key for menu item voting
@@ -52,7 +92,7 @@ async function getServerVotes(voteKey) {
     return null;
 }
 
-async function submitServerVote(voteKey, voteType, userId) {
+async function submitServerVote(voteKey, voteType, userId, previousVote = null) {
     if (!VOTING_CONFIG.enabled) {
         return false;
     }
@@ -76,6 +116,11 @@ async function submitServerVote(voteKey, voteType, userId) {
             voteType: voteType,
             userId: userId
         };
+        
+        // Include previous vote if this is a vote change
+        if (previousVote) {
+            requestBody.previousVote = previousVote;
+        }
         
         if (turnstileToken) {
             requestBody.turnstileToken = turnstileToken;
@@ -137,27 +182,57 @@ function getUserId() {
     return userId;
 }
 
-// Cast a vote for a menu item
+// Show voting time restriction popup
+function showVotingTimePopup() {
+    const today = new Date().toISOString().split('T')[0];
+    const currentMealCategory = getDefaultMealCategory();
+    
+    // Check if we're viewing today's menu for current meal
+    if (currentDate !== today || currentCategory !== currentMealCategory) {
+        alert('Voting is only available for today\'s current meal.');
+        return;
+    }
+    
+    // Show time restriction info
+    const timeInfo = getVotingTimeInfo(currentCategory);
+    if (timeInfo) {
+        const message = `Voting for ${timeInfo.category} is only available from ${timeInfo.startTime} to ${timeInfo.endTime}.\n\nPlease try again during the voting window.`;
+        alert(message);
+    } else {
+        alert('Voting is not available for this meal category.');
+    }
+}
+
+// Cast a vote for a menu item (now allows vote changes)
 async function castVote(dishName, menuType, voteType) {
-    if (!isVotingActive()) {
-        return false; // Voting not active
+    const today = new Date().toISOString().split('T')[0];
+    const currentMealCategory = getDefaultMealCategory();
+    
+    // Check if we're voting for today's current meal
+    if (currentDate !== today || currentCategory !== currentMealCategory) {
+        showVotingTimePopup();
+        return false;
+    }
+    
+    // Check if voting time is active
+    if (!isVotingTimeActive(currentCategory)) {
+        showVotingTimePopup();
+        return false;
     }
 
     const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
     const userVoteKey = `user_${voteKey}`;
     const userId = getUserId();
     
-    // Check if user has already voted
+    // Check if user has already voted - if so, we're changing the vote
     const existingVote = localStorage.getItem(userVoteKey);
-    if (existingVote) {
-        return false; // User has already voted
-    }
+    const isVoteChange = existingVote !== null;
 
     // Try to submit vote to server first
-    const serverSuccess = await submitServerVote(voteKey, voteType, userId);
+    const serverSuccess = await submitServerVote(voteKey, voteType, userId, isVoteChange ? existingVote : null);
     
     if (serverSuccess) {
-        // Server vote successful - save user vote locally to prevent re-voting
+        // Server vote successful - save user vote locally
         localStorage.setItem(userVoteKey, voteType);
         // Clear cached server votes to force refresh
         localStorage.removeItem(`server_${voteKey}`);
@@ -169,7 +244,12 @@ async function castVote(dishName, menuType, voteType) {
         // Get current local votes
         const votes = getVotes(voteKey);
         
-        // Increment the selected vote type
+        // If changing vote, decrement old vote first
+        if (isVoteChange && votes[existingVote] > 0) {
+            votes[existingVote]--;
+        }
+        
+        // Increment the new vote type
         votes[voteType]++;
         
         // Save updated votes and user's vote locally
@@ -196,8 +276,12 @@ function getUserVote(dishName, menuType) {
 
 // Generate voting HTML for menu items
 function generateVotingHtml(dishName, menuType) {
-    if (!isVotingActive()) {
-        return ''; // No voting UI if voting is not active
+    const today = new Date().toISOString().split('T')[0];
+    const currentMealCategory = getDefaultMealCategory();
+    
+    // Only show voting UI if viewing today's menu for current meal
+    if (currentDate !== today || currentCategory !== currentMealCategory) {
+        return ''; // No voting UI if not current day/meal
     }
 
     const voteKey = getVoteKey(dishName, menuType, currentDate, currentCategory);
@@ -205,19 +289,28 @@ function generateVotingHtml(dishName, menuType) {
     const votes = getVotes(voteKey);
     const userVote = getUserVote(dishName, menuType);
     const hasVoted = hasUserVoted(dishName, menuType);
+    const votingTimeActive = isVotingTimeActive(currentCategory);
 
     const voteButtons = Object.values(VOTE_TYPES).map(voteType => {
         const emoji = VOTE_EMOJIS[voteType];
         const count = votes[voteType];
         const isUserVote = userVote === voteType;
-        const buttonClass = hasVoted 
-            ? (isUserVote ? 'vote-button-selected' : 'vote-button-disabled') 
-            : 'vote-button';
+        
+        // Button styling: highlight user's current vote, but allow changes if in voting time
+        let buttonClass = 'vote-button swiftui-button';
+        if (isUserVote) {
+            buttonClass += ' vote-button-selected';
+        } else if (!votingTimeActive) {
+            buttonClass += ' vote-button-disabled';
+        }
+        
+        // Disable buttons only if voting time is not active
+        const isDisabled = !votingTimeActive;
         
         return `
-            <button class="${buttonClass} swiftui-button px-3 py-2 rounded-lg flex items-center gap-2" 
+            <button class="${buttonClass} px-3 py-2 rounded-lg flex items-center gap-2" 
                     onclick="handleVote('${dishName.replace(/'/g, "\\'")}', '${menuType}', '${voteType}')"
-                    ${hasVoted ? 'disabled' : ''}>
+                    ${isDisabled ? 'disabled' : ''}>
                 <span class="text-lg">${emoji}</span>
                 <span class="text-sm font-medium vote-count" data-vote-type="${voteType}">${count}</span>
             </button>
@@ -258,7 +351,13 @@ async function loadVotesForItem(voteKey) {
 
 // Load all visible vote counts from server
 async function refreshVoteCounts() {
-    if (!isVotingActive()) return;
+    const today = new Date().toISOString().split('T')[0];
+    const currentMealCategory = getDefaultMealCategory();
+    
+    // Only refresh if viewing today's menu for current meal
+    if (currentDate !== today || currentCategory !== currentMealCategory) {
+        return;
+    }
     
     const votingContainers = document.querySelectorAll('[data-vote-key]');
     const loadPromises = Array.from(votingContainers).map(container => {
@@ -283,8 +382,6 @@ async function handleVote(dishName, menuType, voteType) {
             // Refresh vote counts again after re-rendering
             setTimeout(() => refreshVoteCounts(), 100);
         }
-    } else {
-        // Show feedback if voting failed
-        console.log('Voting failed - either not active or already voted');
     }
+    // Note: castVote now handles showing popups for failed attempts, so no need for console.log here
 }
