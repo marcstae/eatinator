@@ -7,7 +7,7 @@ const AI_CONFIG = {
     apiUrl: '/api/ai',
     maxTokens: 300,
     temperature: 0.7,
-    timeout: 10000,
+    timeout: 65000, // Increased to 65 seconds to allow for backend processing + network
     // Fallback to localStorage for settings
     storageKey: 'eatinator_ai_settings'
 };
@@ -493,7 +493,9 @@ function toggleAiChat() {
         chatContainer.style.transform = 'translateY(0)';
         chatContainer.classList.remove('translate-y-full');
         if (fab) {
-            fab.style.opacity = '0.7';
+            // Move FAB to avoid keyboard overlap
+            fab.classList.add('chat-open');
+            fab.style.opacity = '0.8';
             fab.style.transform = 'scale(0.9)';
         }
     } else {
@@ -502,6 +504,8 @@ function toggleAiChat() {
         chatContainer.style.transform = 'translateY(100%)';
         chatContainer.classList.add('translate-y-full');
         if (fab) {
+            // Restore FAB to original position
+            fab.classList.remove('chat-open');
             fab.style.opacity = '1';
             fab.style.transform = 'scale(1)';
         }
@@ -547,7 +551,19 @@ async function sendAiMessage() {
     } catch (error) {
         console.error('AI API error:', error);
         hideTypingIndicator();
-        addAiMessage('assistant', getLocalizedText('ai_error_message'));
+        
+        // Show actual error message instead of generic fallback
+        const errorMessage = error.message || 'Unknown error occurred';
+        const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('aborted');
+        
+        if (isTimeout) {
+            addAiMessage('assistant', 'The AI request timed out. The service might be busy. Please try again in a moment.');
+        } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+            addAiMessage('assistant', 'Network connection issue. Please check your internet connection and try again.');
+        } else {
+            // Show the actual error for debugging, but make it user-friendly
+            addAiMessage('assistant', `Sorry, there was an issue with the AI service: ${errorMessage}`);
+        }
     }
 }
 
@@ -578,40 +594,159 @@ function getCurrentMenuContext() {
     };
 }
 
-// Call AI API via backend
+// Call AI API via backend with streaming support
 async function callAiApi(message, context) {
     try {
         // Detect language from user message first
         const detectedLang = detectMessageLanguage(message);
         context.language = detectedLang;
         
-        const response = await fetch(AI_CONFIG.apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                context: context
-            }),
-            signal: AbortSignal.timeout(AI_CONFIG.timeout)
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.response) {
-                return data.response;
-            } else {
-                throw new Error(data.error || 'AI API returned no response');
-            }
-        } else {
-            throw new Error(`AI API responded with status ${response.status}`);
+        // Try streaming first
+        try {
+            return await callAiApiStreaming(message, context);
+        } catch (streamError) {
+            console.log('Streaming failed, falling back to traditional request:', streamError.message);
+            // Fall back to traditional request
+            return await callAiApiTraditional(message, context);
         }
         
     } catch (error) {
-        console.log(`AI API failed: ${error.message}`);
-        // Return fallback response
-        return generateFallbackResponse(message, context);
+        // Re-throw the error to be handled by caller
+        throw error;
+    }
+}
+
+// Streaming AI API call
+async function callAiApiStreaming(message, context) {
+    const response = await fetch(AI_CONFIG.apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({
+            message: message,
+            context: context
+        }),
+        signal: AbortSignal.timeout(AI_CONFIG.timeout)
+    });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI API responded with status ${response.status}: ${errorText}`);
+    }
+    
+    if (response.headers.get('content-type')?.includes('text/event-stream')) {
+        // Handle streaming response
+        return await handleStreamingResponse(response);
+    } else {
+        // Response is not streaming, handle as JSON
+        const data = await response.json();
+        if (data.success && data.response) {
+            return data.response;
+        } else {
+            throw new Error(data.error || 'AI API returned no response');
+        }
+    }
+}
+
+// Traditional AI API call (fallback)
+async function callAiApiTraditional(message, context) {
+    const response = await fetch(AI_CONFIG.apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: message,
+            context: context
+        }),
+        signal: AbortSignal.timeout(AI_CONFIG.timeout)
+    });
+    
+    if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.response) {
+            return data.response;
+        } else {
+            throw new Error(data.error || 'AI API returned no response');
+        }
+    } else {
+        const errorText = await response.text();
+        throw new Error(`AI API responded with status ${response.status}: ${errorText}`);
+    }
+}
+
+// Handle streaming response
+async function handleStreamingResponse(response) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+    let currentMessageElement = null;
+    
+    // Add a placeholder message that we'll update as chunks arrive
+    hideTypingIndicator();
+    currentMessageElement = addAiMessage('assistant', '');
+    
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        
+                        if (data.chunk) {
+                            fullResponse += data.chunk;
+                            // Update the message element with current content
+                            updateMessageContent(currentMessageElement, fullResponse);
+                        }
+                        
+                        if (data.done) {
+                            return fullResponse.trim();
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse streaming data:', line, e);
+                    }
+                }
+            }
+        }
+        
+        return fullResponse.trim() || 'No response received';
+        
+    } catch (error) {
+        // Remove the placeholder message
+        if (currentMessageElement && currentMessageElement.parentNode) {
+            currentMessageElement.parentNode.removeChild(currentMessageElement);
+        }
+        throw error;
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+// Update message content during streaming
+function updateMessageContent(messageElement, content) {
+    if (messageElement) {
+        const contentDiv = messageElement.querySelector('p');
+        if (contentDiv) {
+            contentDiv.textContent = content;
+            // Scroll to bottom to show new content
+            const messagesContainer = document.getElementById('aiChatMessages');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
     }
 }
 
@@ -638,6 +773,9 @@ function addAiMessage(role, content) {
     
     // Store message
     aiMessages.push({ role, content, timestamp: new Date() });
+    
+    // Return the message element for streaming updates
+    return messageDiv;
 }
 
 // Show typing indicator
