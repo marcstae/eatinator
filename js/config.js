@@ -49,7 +49,7 @@ const VOTING_CONFIG = {
 const IMAGE_CONFIG = {
     apiUrl: '/api/images', // REST endpoint for images
     enabled: true, // Can be disabled to hide image features
-    maxSize: 5 * 1024 * 1024, // 5MB max file size
+    maxSize: 15 * 1024 * 1024, // 15MB max file size
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     timeout: 10000 // 10 second timeout for uploads
 };
