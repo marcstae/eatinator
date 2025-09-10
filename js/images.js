@@ -55,7 +55,7 @@ async function uploadImage(dishName, menuType, file) {
 
     // Validate file size
     if (file.size > IMAGE_CONFIG.maxSize) {
-        throw new Error('File too large. Maximum size is 5MB');
+        throw new Error('File too large. Maximum size is 15MB');
     }
 
     // Validate file type

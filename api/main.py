@@ -41,7 +41,7 @@ app.add_middleware(
 DATA_DIR = Path(__file__).parent / "data"
 IMAGES_DIR = DATA_DIR / "images"
 DB_PATH = DATA_DIR / "eatinator.db"
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 15MB
 ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"]
 RETENTION_HOURS = 24
@@ -644,7 +644,7 @@ async def upload_image_rest(
             raise HTTPException(400, "No file provided")
         
         if image.size > MAX_FILE_SIZE:
-            raise HTTPException(400, "File too large. Maximum size is 5MB")
+            raise HTTPException(400, "File too large. Maximum size is 15MB")
         
         # Validate image
         safe_extension = validate_image_file(image)
