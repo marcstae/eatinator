@@ -108,3 +108,89 @@ function nextWeek() {
     updateWeekLabel();
     loadMenu();
 }
+
+// Keyboard navigation functionality
+function initKeyboardNavigation() {
+    document.addEventListener('keydown', handleKeyboardNavigation);
+}
+
+function handleKeyboardNavigation(event) {
+    // Skip if typing in an input field, textarea, or contenteditable
+    if (event.target.tagName === 'INPUT' || 
+        event.target.tagName === 'TEXTAREA' || 
+        event.target.contentEditable === 'true') {
+        return;
+    }
+
+    // Skip if kiosk mode is active
+    if (kioskMode) {
+        return;
+    }
+
+    switch (event.key) {
+        case 'ArrowUp':
+            event.preventDefault();
+            navigateCategory('up');
+            break;
+        case 'ArrowDown':
+            event.preventDefault();
+            navigateCategory('down');
+            break;
+        case 'ArrowLeft':
+            event.preventDefault();
+            navigateDay('left');
+            break;
+        case 'ArrowRight':
+            event.preventDefault();
+            navigateDay('right');
+            break;
+    }
+}
+
+function navigateCategory(direction) {
+    const categories = ['breakfast', 'lunch', 'dinner'];
+    const currentIndex = categories.indexOf(currentCategory);
+    
+    let newIndex;
+    if (direction === 'up') {
+        // Up: dinner → lunch → breakfast (reverse order)
+        newIndex = currentIndex > 0 ? currentIndex - 1 : categories.length - 1;
+    } else {
+        // Down: breakfast → lunch → dinner (forward order)
+        newIndex = currentIndex < categories.length - 1 ? currentIndex + 1 : 0;
+    }
+    
+    selectCategory(categories[newIndex]);
+}
+
+function navigateDay(direction) {
+    // Get the current week's days (Monday to Friday)
+    const currentDateObj = new Date(currentDate);
+    const dayOfWeek = currentDateObj.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const mondayOfWeek = new Date(currentDateObj);
+    mondayOfWeek.setDate(currentDateObj.getDate() + daysToMonday);
+    
+    // Calculate current day index (Mon=0, Tue=1, Wed=2, Thu=3, Fri=4)
+    const currentDayIndex = Math.floor((currentDateObj - mondayOfWeek) / (1000 * 60 * 60 * 24));
+    
+    let newDayIndex;
+    if (direction === 'left') {
+        // Left: Friday → Thursday → Wednesday → Tuesday → Monday
+        newDayIndex = currentDayIndex > 0 ? currentDayIndex - 1 : 0; // Stay at Monday
+    } else {
+        // Right: Monday → Tuesday → Wednesday → Thursday → Friday
+        newDayIndex = currentDayIndex < 4 ? currentDayIndex + 1 : 4; // Stay at Friday
+    }
+    
+    // Calculate the new date
+    const newDate = new Date(mondayOfWeek);
+    newDate.setDate(mondayOfWeek.getDate() + newDayIndex);
+    const newDateStr = newDate.toISOString().split('T')[0];
+    
+    // Get day name for the new date
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const dayName = dayNames[newDayIndex];
+    
+    selectDay(newDateStr, dayName);
+}

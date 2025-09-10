@@ -29,6 +29,11 @@ function initNormalMode() {
     selectDay(currentDate, dayNames[dayOfWeek]);
     loadMenu();
     
+    // Initialize keyboard navigation
+    if (typeof initKeyboardNavigation === 'function') {
+        initKeyboardNavigation();
+    }
+    
     // Initialize AI Assistant (will handle opt-in check internally)
     if (typeof initAiAssistant === 'function') {
         initAiAssistant();
