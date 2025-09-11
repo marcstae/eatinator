@@ -184,7 +184,6 @@ html {
     padding-bottom: env(safe-area-inset-bottom);
 }
 
-<<<<<<< HEAD
 /* UwU Mode Styles */
 .uwu-mode {
     --uwu-primary: #FF69B4;
@@ -199,10 +198,17 @@ html {
 
 .uwu-mode .segment-control {
     background: rgba(255, 105, 180, 0.3);
+    border: 1px solid rgba(255, 105, 180, 0.4);
+    backdrop-filter: blur(20px);
 }
 
 .uwu-mode .segment-active {
     background: var(--uwu-primary);
+    border: 2px solid var(--uwu-secondary);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.5), 0 0 30px rgba(255, 105, 180, 0.2);
+    backdrop-filter: blur(10px);
+    font-weight: 700;
+    transform: scale(1.05);
 }
 
 .uwu-mode .day-button.active {
@@ -327,5 +333,4 @@ html {
     height: 40vh !important;
     /* Ensure full height doesn't interfere with keyboard */
     max-height: calc(100vh - env(keyboard-inset-height, 0px) - 2rem);
-}
 }
