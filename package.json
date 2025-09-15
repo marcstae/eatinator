@@ -1,0 +1,31 @@
+{
+  "name": "eatinator-workers",
+  "version": "2.0.0",
+  "description": "Serverless backend for Eatinator using Cloudflare Workers",
+  "type": "module",
+  "main": "workers/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "setup": "node scripts/setup-cloudflare.js",
+    "test": "wrangler dev --test-scheduled",
+    "logs": "wrangler tail",
+    "kv:list": "wrangler kv:namespace list",
+    "d1:list": "wrangler d1 list",
+    "r2:list": "wrangler r2 bucket list"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "serverless",
+    "pwa",
+    "restaurant",
+    "menu"
+  ],
+  "author": "Eatinator Project",
+  "license": "MIT"
+}

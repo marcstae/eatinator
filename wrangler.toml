@@ -1,0 +1,34 @@
+# Cloudflare Workers configuration for Eatinator
+name = "eatinator-api"
+main = "workers/index.js"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+# Cloudflare KV Namespace for voting data
+[[kv_namespaces]]
+binding = "VOTING_KV"
+preview_id = "voting_preview"
+id = "voting_production" # Replace with actual KV namespace ID after creation
+
+# Cloudflare D1 Database for relational data
+[[d1_databases]]
+binding = "VOTING_DB"
+database_name = "eatinator-voting"
+database_id = "voting_database_id" # Replace with actual D1 database ID after creation
+
+# Cloudflare R2 Bucket for image storage
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "eatinator-images"
+
+# Environment variables for production
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Environment variables for development
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+# Secrets (set via wrangler secret put)
+# TURNSTILE_SECRET_KEY - Cloudflare Turnstile secret key
+# AI_API_KEY - Optional API key for AI service
