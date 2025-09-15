@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eatinator Serverless Test</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 2rem; }
+        .test { margin: 1rem 0; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+        .pass { border-color: #4ade80; background: #f0fdf4; }
+        .fail { border-color: #f87171; background: #fef2f2; }
+        .pending { border-color: #fbbf24; background: #fffbeb; }
+        pre { background: #f8f9fa; padding: 0.5rem; border-radius: 4px; overflow-x: auto; }
+        button { background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2563eb; }
+        .config { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Eatinator Serverless Test Suite</h1>
+    <p>This page tests the serverless backend functionality using the same frontend code.</p>
+    
+    <div class="config">
+        <h3>Configuration Test</h3>
+        <p>Current API endpoints:</p>
+        <pre id="config-display">Loading...</pre>
+        <label>
+            <input type="text" id="worker-url" placeholder="https://your-worker.workers.dev" style="width: 300px; padding: 0.5rem;">
+            <button onclick="updateConfig()">Update Worker URL</button>
+        </label>
+    </div>
+
+    <button onclick="runTests()">🚀 Run All Tests</button>
+    <button onclick="clearResults()">🗑️ Clear Results</button>
+
+    <div id="test-results"></div>
+
+    <script src="js/config.js"></script>
+    <script>
+        // Test configuration
+        let currentWorkerUrl = '';
+        let testResults = [];
+
+        // Display current configuration
+        function displayConfig() {
+            const config = {
+                votingApiUrl: VOTING_CONFIG.apiUrl,
+                imageApiUrl: IMAGE_CONFIG.apiUrl,
+                aiApiUrl: AI_CONFIG?.apiUrl || 'Not configured',
+                turnstileEnabled: TURNSTILE_CONFIG?.enabled || false
+            };
+            document.getElementById('config-display').textContent = JSON.stringify(config, null, 2);
+        }
+
+        // Update configuration for testing
+        function updateConfig() {
+            const newUrl = document.getElementById('worker-url').value.trim();
+            if (newUrl) {
+                currentWorkerUrl = newUrl;
+                // Update global configuration
+                VOTING_CONFIG.apiUrl = `${newUrl}/api/votes`;
+                VOTING_CONFIG.legacyApiUrl = `${newUrl}/api/votes.php`;
+                IMAGE_CONFIG.apiUrl = `${newUrl}/api/images`;
+                IMAGE_CONFIG.legacyApiUrl = `${newUrl}/api/images.php`;
+                if (typeof AI_CONFIG !== 'undefined') {
+                    AI_CONFIG.apiUrl = `${newUrl}/api/ai`;
+                    AI_CONFIG.healthUrl = `${newUrl}/api/ai/health`;
+                }
+                displayConfig();
+                addTestResult('Config Updated', `Worker URL set to: ${newUrl}`, 'pass');
+            }
+        }
+
+        // Add test result to display
+        function addTestResult(testName, result, status) {
+            const div = document.createElement('div');
+            div.className = `test ${status}`;
+            div.innerHTML = `
+                <h3>${getStatusIcon(status)} ${testName}</h3>
+                <pre>${result}</pre>
+                <small>Time: ${new Date().toLocaleTimeString()}</small>
+            `;
+            document.getElementById('test-results').appendChild(div);
+            testResults.push({ testName, result, status });
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'pass': return '✅';
+                case 'fail': return '❌';
+                case 'pending': return '⏳';
+                default: return '🔍';
+            }
+        }
+
+        // Test functions
+        async function testHealthEndpoint() {
+            try {
+                const url = currentWorkerUrl ? `${currentWorkerUrl}/health` : '/health';
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    addTestResult('Health Check', `Service healthy: ${JSON.stringify(data, null, 2)}`, 'pass');
+                    return true;
+                } else {
+                    addTestResult('Health Check', `Unexpected response: ${JSON.stringify(data, null, 2)}`, 'fail');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('Health Check', `Error: ${error.message}`, 'fail');
+                return false;
+            }
+        }
+
+        async function testVotingEndpoint() {
+            try {
+                const testKey = `test_${Date.now()}`;
+                const testUserId = `user_${Date.now()}`;
+                
+                // Test getting empty votes
+                const getUrl = currentWorkerUrl ? `${currentWorkerUrl}/api/votes/${testKey}` : `/api/votes/${testKey}`;
+                const getResponse = await fetch(getUrl);
+                const getResult = await getResponse.json();
+                
+                if (getResult.success && getResult.votes.good === 0) {
+                    addTestResult('Vote Retrieval', 'Empty votes retrieved successfully', 'pass');
+                } else {
+                    addTestResult('Vote Retrieval', `Unexpected response: ${JSON.stringify(getResult)}`, 'fail');
+                    return false;
+                }
+
+                // Test casting a vote
+                const postUrl = currentWorkerUrl ? `${currentWorkerUrl}/api/votes` : `/api/votes`;
+                const postResponse = await fetch(postUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: testKey,
+                        voteType: 'good',
+                        userId: testUserId
+                    })
+                });
+                const postResult = await postResponse.json();
+                
+                if (postResult.success && postResult.votes.good === 1) {
+                    addTestResult('Vote Casting', 'Vote cast successfully', 'pass');
+                    return true;
+                } else {
+                    addTestResult('Vote Casting', `Vote failed: ${JSON.stringify(postResult)}`, 'fail');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('Voting System', `Error: ${error.message}`, 'fail');
+                return false;
+            }
+        }
+
+        async function testImageEndpoint() {
+            try {
+                const testKey = `dish_${Date.now()}`;
+                const url = currentWorkerUrl ? `${currentWorkerUrl}/api/images/${testKey}` : `/api/images/${testKey}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success && Array.isArray(data.images)) {
+                    addTestResult('Image Retrieval', `Images endpoint working: ${data.images.length} images found`, 'pass');
+                    return true;
+                } else {
+                    addTestResult('Image Retrieval', `Unexpected response: ${JSON.stringify(data)}`, 'fail');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('Image System', `Error: ${error.message}`, 'fail');
+                return false;
+            }
+        }
+
+        async function testAIEndpoint() {
+            try {
+                const url = currentWorkerUrl ? `${currentWorkerUrl}/api/ai/health` : `/api/ai/health`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status) {
+                    addTestResult('AI Health Check', `AI status: ${data.status} (${data.ai_service || 'unknown'})`, 'pass');
+                    return true;
+                } else {
+                    addTestResult('AI Health Check', `Unexpected response: ${JSON.stringify(data)}`, 'fail');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('AI System', `Error: ${error.message}`, 'fail');
+                return false;
+            }
+        }
+
+        async function testCORS() {
+            try {
+                const url = currentWorkerUrl ? `${currentWorkerUrl}/api/votes/test` : `/api/votes/test`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Origin': 'https://example.com' }
+                });
+                
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                if (corsHeader === '*' || corsHeader === 'https://example.com') {
+                    addTestResult('CORS Headers', 'CORS properly configured', 'pass');
+                    return true;
+                } else {
+                    addTestResult('CORS Headers', `Missing or incorrect CORS header: ${corsHeader}`, 'fail');
+                    return false;
+                }
+            } catch (error) {
+                addTestResult('CORS System', `Error: ${error.message}`, 'fail');
+                return false;
+            }
+        }
+
+        // Run all tests
+        async function runTests() {
+            clearResults();
+            addTestResult('Test Suite Started', 'Running comprehensive API tests...', 'pending');
+            
+            const tests = [
+                { name: 'Health Endpoint', fn: testHealthEndpoint },
+                { name: 'Voting System', fn: testVotingEndpoint },
+                { name: 'Image System', fn: testImageEndpoint },
+                { name: 'AI System', fn: testAIEndpoint },
+                { name: 'CORS Configuration', fn: testCORS }
+            ];
+
+            let passed = 0;
+            let failed = 0;
+
+            for (const test of tests) {
+                try {
+                    const result = await test.fn();
+                    if (result) passed++;
+                    else failed++;
+                } catch (error) {
+                    addTestResult(test.name, `Unexpected error: ${error.message}`, 'fail');
+                    failed++;
+                }
+                
+                // Add small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // Summary
+            const summary = `Tests completed: ${passed} passed, ${failed} failed`;
+            const status = failed === 0 ? 'pass' : 'fail';
+            addTestResult('Test Suite Summary', summary, status);
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            testResults = [];
+        }
+
+        // Initialize
+        displayConfig();
+        
+        // Auto-detect if we're running with a local server
+        if (window.location.hostname === 'localhost') {
+            document.getElementById('worker-url').value = 'http://127.0.0.1:8787';
+        }
+    </script>
+</body>
+</html>
