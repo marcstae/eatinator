@@ -1,0 +1,8 @@
+# Cloudflare Pages redirects for API proxy
+# This allows the frontend to work with both local development and production Workers
+
+# Redirect API calls to the Cloudflare Worker when deployed
+/api/* https://eatinator-api.your-domain.workers.dev/api/:splat 200
+
+# Fallback to index.html for SPA routing
+/* /index.html 200

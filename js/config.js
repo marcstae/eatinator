@@ -37,21 +37,32 @@ const VOTE_EMOJIS = {
     [VOTE_TYPES.BAD]: '🤮'
 };
 
-// Server-side voting configuration
+// Serverless backend configuration (Cloudflare Workers)
 const VOTING_CONFIG = {
-    // REST-compliant API endpoints
-    apiUrl: '/api/votes', // REST endpoint for votes
+    // Cloudflare Workers API endpoints - update this URL after deployment
+    apiUrl: window.location.hostname === 'localhost' ? '/api/votes' : 'https://eatinator-api.your-domain.workers.dev/api/votes',
+    legacyApiUrl: window.location.hostname === 'localhost' ? '/api/votes.php' : 'https://eatinator-api.your-domain.workers.dev/api/votes.php',
     enabled: true, // Can be disabled to fall back to localStorage only
     timeout: 5000 // 5 second timeout for API calls
 };
 
-// Image upload configuration
+// Image upload configuration (Cloudflare R2)
 const IMAGE_CONFIG = {
-    apiUrl: '/api/images', // REST endpoint for images
+    apiUrl: window.location.hostname === 'localhost' ? '/api/images' : 'https://eatinator-api.your-domain.workers.dev/api/images',
+    legacyApiUrl: window.location.hostname === 'localhost' ? '/api/images.php' : 'https://eatinator-api.your-domain.workers.dev/api/images.php',
     enabled: true, // Can be disabled to hide image features
     maxSize: 15 * 1024 * 1024, // 15MB max file size
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
     timeout: 10000 // 10 second timeout for uploads
+};
+
+// AI Assistant configuration (Cloudflare Workers proxy)
+const AI_CONFIG = {
+    apiUrl: window.location.hostname === 'localhost' ? '/api/ai' : 'https://eatinator-api.your-domain.workers.dev/api/ai',
+    healthUrl: window.location.hostname === 'localhost' ? '/api/ai/health' : 'https://eatinator-api.your-domain.workers.dev/api/ai/health',
+    enabled: true,
+    timeout: 60000, // 60 second timeout for AI requests
+    streamingEnabled: true // Enable streaming responses
 };
 
 // Cloudflare Turnstile configuration

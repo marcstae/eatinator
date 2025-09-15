@@ -7,7 +7,38 @@ A Progressive Web App (PWA) that displays daily lunch menus from the Eurest rest
 
 ## 🚀 Quick Start
 
-### Using Docker Compose (Recommended)
+### Option 1: Serverless Deployment (Recommended for Production)
+
+Deploy to Cloudflare Workers for zero-maintenance, globally distributed, and cost-effective hosting:
+
+```bash
+# Clone the repository
+git clone https://github.com/marcstae/eatinator.git
+cd eatinator
+
+# Install Wrangler CLI and setup Cloudflare services
+npm install -g wrangler
+wrangler auth login
+./scripts/setup-cloudflare.sh
+
+# Deploy the serverless API
+npm run deploy
+
+# Deploy frontend to Cloudflare Pages (recommended)
+./scripts/setup-pages.sh
+
+# Or deploy to other static hosting services
+wrangler pages deploy . --project-name eatinator  # Cloudflare Pages
+netlify deploy --prod --dir=.                     # Netlify  
+vercel --prod                                      # Vercel
+```
+
+**Benefits**: $0/month cost, automatic scaling, global CDN, 99.9% uptime
+**See**: 
+- [SERVERLESS_DEPLOYMENT.md](SERVERLESS_DEPLOYMENT.md) for backend deployment
+- [CLOUDFLARE_PAGES.md](CLOUDFLARE_PAGES.md) for frontend deployment
+
+### Option 2: Docker Compose (Self-Hosted)
 
 ```bash
 # Clone the repository
@@ -44,8 +75,20 @@ python3 proxy_server.py     # Frontend proxy on port 8000
 
 ## 🏗️ Architecture
 
+### Serverless Architecture (Cloudflare Workers)
+
+- **Cloudflare Workers**: API endpoints and business logic
+- **Cloudflare KV**: Fast key-value storage for voting data  
+- **Cloudflare D1**: SQLite-compatible database for relational data
+- **Cloudflare R2**: Object storage for image uploads
+- **Static Frontend**: Globally distributed via CDN
+
+**Benefits**: Zero server maintenance, automatic scaling, $0 cost for typical usage
+
+### Traditional Architecture (Self-Hosted)
+
 <details>
-<summary><strong>Frontend (Static)</strong></summary>
+<summary><strong>FastAPI Backend + Static Frontend</strong></summary>
 
 - **Zero Dependencies**: No build system, direct HTML/CSS/JavaScript
 - **Tailwind CSS**: CDN-loaded styling with local fallback
