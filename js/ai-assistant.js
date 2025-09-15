@@ -1,16 +1,6 @@
 // AI Assistant functionality for menu questions and dish explanations
 
-// AI Assistant configuration
-const AI_CONFIG = {
-    enabled: true, // Allow AI feature to be available, but it's opt-in via user settings
-    // Backend API endpoint (replaces direct external API calls)
-    apiUrl: '/api/ai',
-    maxTokens: 300,
-    temperature: 0.7,
-    timeout: 65000, // Increased to 65 seconds to allow for backend processing + network
-    // Fallback to localStorage for settings
-    storageKey: 'eatinator_ai_settings'
-};
+
 
 // AI Assistant state
 let aiChatVisible = false;
