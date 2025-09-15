@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/marcstae/eatinator/compare/v1.1.0...v1.2.0) (2025-09-15)
+
+
+### Features
+
+* add Cloudflare Pages deployment support for frontend ([7e83cec](https://github.com/marcstae/eatinator/commit/7e83cecd7dc039a8a467810cf8d2c287ed9de7eb))
+* migrate AI functionality to Cloudflare AI models ([975cf38](https://github.com/marcstae/eatinator/commit/975cf383d179126372d8036d72534ecc9b7b39d2))
+
 # [1.1.0](https://github.com/marcstae/eatinator/compare/v1.0.3...v1.1.0) (2025-09-01)
 
 
