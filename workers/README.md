@@ -9,6 +9,7 @@ The serverless architecture uses:
 - **Cloudflare KV**: Fast key-value storage for voting data
 - **Cloudflare D1**: SQLite-compatible database for relational data
 - **Cloudflare R2**: Object storage for image uploads
+- **Cloudflare AI**: Built-in AI models for intelligent responses
 
 ## File Structure
 
@@ -17,7 +18,7 @@ workers/
 ├── index.js          # Main Worker entry point and router
 ├── voting.js         # Voting system implementation
 ├── images.js         # Image upload/storage system
-├── ai.js             # AI assistant proxy
+├── ai.js             # AI assistant using Cloudflare AI models
 ├── utils.js          # Shared utilities and helpers
 └── schema.sql        # D1 database schema
 ```
@@ -62,6 +63,7 @@ This serverless architecture is designed to minimize costs:
 - **KV**: 10GB storage + 100,000 reads/day free
 - **D1**: 100,000 rows + 5GB storage free
 - **R2**: 10GB storage + 10M Class B operations free
+- **AI**: 10,000 Neurons/day free (sufficient for typical usage)
 
 Expected monthly cost: **$0** for typical usage patterns.
 

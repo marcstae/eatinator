@@ -1,5 +1,5 @@
-// AI assistant proxy implementation for Cloudflare Workers
-// Proxies requests to external AI service with caching and rate limiting
+// AI assistant implementation using Cloudflare AI Workers
+// Uses Cloudflare's built-in AI models for cost-effective operation
 
 import { 
   jsonResponse, 
@@ -12,13 +12,12 @@ import {
   logError 
 } from './utils.js';
 
-// AI Configuration
+// Cloudflare AI Configuration
 const AI_CONFIG = {
-  url: 'https://mlvoca.com/api/generate',
-  model: 'deepseek-r1:1.5b',
+  model: '@cf/meta/llama-3.1-8b-instruct', // Cost-effective model with good performance
   maxTokens: 300,
   temperature: 0.7,
-  timeout: 60000 // 60 seconds
+  timeout: 30000 // 30 seconds for Cloudflare AI
 };
 
 /**
@@ -106,139 +105,95 @@ function getFallbackResponse(message, context = {}) {
 }
 
 /**
- * Call external AI API
+ * Call Cloudflare AI API using Workers AI
  */
-async function callAiApi(message, context = {}) {
+async function callCloudflareAi(message, context = {}, env) {
   const systemPrompt = getSystemPrompt(context);
   
-  const payload = {
-    model: AI_CONFIG.model,
-    prompt: `${systemPrompt}\n\nUser: ${message}\nAssistant:`,
-    stream: false,
-    options: {
-      temperature: AI_CONFIG.temperature,
-      num_predict: AI_CONFIG.maxTokens
-    }
-  };
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), AI_CONFIG.timeout);
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: message }
+  ];
 
   try {
-    const response = await fetch(AI_CONFIG.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
+    const response = await env.AI.run(AI_CONFIG.model, {
+      messages,
+      max_tokens: AI_CONFIG.maxTokens,
+      temperature: AI_CONFIG.temperature,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`AI API responded with status ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const aiResponse = data.response || '';
+    const aiResponse = response.response || '';
     
     if (!aiResponse.trim()) {
-      throw new Error('AI API returned empty response');
+      throw new Error('Cloudflare AI returned empty response');
     }
 
     return aiResponse.trim();
 
   } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      throw new Error('AI request timed out - the service may be overloaded. Please try again.');
-    }
-    
+    logError('Cloudflare AI API error', error);
     throw error;
   }
 }
 
 /**
- * Generate streaming AI response
+ * Generate streaming AI response using Cloudflare AI
  */
-async function* streamAiApi(message, context = {}) {
+async function* streamCloudflareAi(message, context = {}, env) {
   const systemPrompt = getSystemPrompt(context);
   
-  const payload = {
-    model: AI_CONFIG.model,
-    prompt: `${systemPrompt}\n\nUser: ${message}\nAssistant:`,
-    stream: true,
-    options: {
-      temperature: AI_CONFIG.temperature,
-      num_predict: AI_CONFIG.maxTokens
-    }
-  };
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), AI_CONFIG.timeout);
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: message }
+  ];
 
   try {
-    const response = await fetch(AI_CONFIG.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
+    const response = await env.AI.run(AI_CONFIG.model, {
+      messages,
+      max_tokens: AI_CONFIG.maxTokens,
+      temperature: AI_CONFIG.temperature,
+      stream: true
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`AI API responded with status ${response.status}: ${response.statusText}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('Unable to read response stream');
-    }
-
-    const decoder = new TextDecoder();
-    
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.trim()) {
+    // Handle Cloudflare AI streaming response
+    if (response.readable) {
+      const reader = response.readable.getReader();
+      const decoder = new TextDecoder();
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            yield `data: ${JSON.stringify({ done: true })}\n\n`;
+            break;
+          }
+          
+          const chunk = decoder.decode(value, { stream: true });
+          if (chunk.trim()) {
             try {
-              const data = JSON.parse(line);
+              const data = JSON.parse(chunk);
               if (data.response) {
                 yield `data: ${JSON.stringify({ chunk: data.response })}\n\n`;
-              } else if (data.done) {
-                yield `data: ${JSON.stringify({ done: true })}\n\n`;
-                return;
               }
             } catch (parseError) {
-              // Skip malformed JSON lines
-              continue;
+              // Handle non-JSON chunks (raw text from Cloudflare AI)
+              yield `data: ${JSON.stringify({ chunk })}\n\n`;
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
+    } else {
+      // Fallback for non-streaming response
+      const aiResponse = response.response || '';
+      yield `data: ${JSON.stringify({ chunk: aiResponse })}\n\n`;
+      yield `data: ${JSON.stringify({ done: true })}\n\n`;
     }
 
   } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      yield `data: ${JSON.stringify({ error: 'AI request timed out - the service may be overloaded. Please try again.' })}\n\n`;
-    } else {
-      yield `data: ${JSON.stringify({ error: error.message })}\n\n`;
-    }
+    logError('Cloudflare AI streaming error', error);
+    yield `data: ${JSON.stringify({ error: error.message })}\n\n`;
   }
 }
 
@@ -281,7 +236,7 @@ export async function aiChat(request, env) {
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            for await (const chunk of streamAiApi(message, context)) {
+            for await (const chunk of streamCloudflareAi(message, context, env)) {
               controller.enqueue(new TextEncoder().encode(chunk));
             }
           } catch (error) {
@@ -316,7 +271,7 @@ export async function aiChat(request, env) {
           return jsonResponse({ success: true, response: cachedResponse });
         }
 
-        const aiResponse = await callAiApi(message, context);
+        const aiResponse = await callCloudflareAi(message, context, env);
         
         // Cache the response for 5 minutes
         await env.VOTING_KV.put(cacheKey, aiResponse, { expirationTtl: 300 });
@@ -360,38 +315,30 @@ export async function aiHealth(request, env) {
       date: 'today'
     };
 
-    const testPayload = {
-      model: AI_CONFIG.model,
-      prompt: 'Test prompt',
-      stream: false,
-      options: {
-        temperature: 0.1,
-        num_predict: 10
-      }
-    };
-
-    const response = await fetch(AI_CONFIG.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(testPayload),
-      signal: AbortSignal.timeout(5000) // 5 second timeout for health check
+    // Test Cloudflare AI with a simple prompt
+    const testResponse = await env.AI.run(AI_CONFIG.model, {
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Hello' }
+      ],
+      max_tokens: 10,
+      temperature: 0.1
     });
 
-    if (response.ok) {
+    if (testResponse && testResponse.response) {
       return jsonResponse({ 
         status: 'healthy', 
         ai_service: 'available',
-        endpoint: AI_CONFIG.url,
-        model: AI_CONFIG.model
+        provider: 'Cloudflare AI',
+        model: AI_CONFIG.model,
+        test_response: testResponse.response.substring(0, 50)
       });
     } else {
       return jsonResponse({ 
         status: 'degraded', 
         ai_service: 'unavailable', 
         fallback: 'active',
-        error: `HTTP ${response.status}`
+        error: 'No response from Cloudflare AI'
       });
     }
 
@@ -401,7 +348,8 @@ export async function aiHealth(request, env) {
       status: 'degraded', 
       ai_service: 'unavailable', 
       fallback: 'active',
-      error: error.message
+      error: error.message,
+      provider: 'Cloudflare AI'
     });
   }
 }
