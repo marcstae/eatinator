@@ -93,16 +93,42 @@ npm run deploy --env development
    };
    ```
 
-### Step 7: Deploy Frontend
+### Step 7: Deploy Frontend to Cloudflare Pages
 
-Deploy the frontend to any static hosting service:
+Deploy the frontend using the automated setup script:
 
-**Cloudflare Pages** (recommended):
 ```bash
-# Connect your GitHub repo to Cloudflare Pages
-# or use Wrangler Pages
-wrangler pages publish . --project-name eatinator
+# Automated setup and deployment
+chmod +x scripts/setup-pages.sh
+./scripts/setup-pages.sh
 ```
+
+**Manual deployment** (alternative):
+```bash
+# Create Pages project
+npm run setup:pages
+
+# Deploy to Pages
+npm run deploy:pages
+
+# For production environment
+npm run deploy:pages:prod
+```
+
+**GitHub Integration** (recommended for continuous deployment):
+1. **Set up repository secrets** in GitHub:
+   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token
+   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+
+2. **Connect repository**: The GitHub Action will automatically deploy on push to main/develop branches
+
+3. **Custom domain setup**:
+   ```bash
+   # Add custom domain to Pages project
+   wrangler pages project create eatinator --production-branch main
+   ```
+
+**Alternative hosting options**:
 
 **Netlify**:
 ```bash
@@ -125,7 +151,28 @@ vercel --prod
    ```bash
    wrangler route put "api.yourdomain.com/*" your-eatinator-api
    ```
-3. **Update frontend config** with custom domain
+3. **Configure Pages custom domain**:
+   ```bash
+   # Add custom domain to Pages project
+   wrangler pages domain add eatinator yourdomain.com
+   ```
+4. **Update frontend config** with custom domain
+
+### Cloudflare Pages Configuration
+
+**Project Settings**:
+- **Build command**: `echo 'Static site - no build required'`
+- **Build output directory**: `.` (root directory)
+- **Root directory**: `/` (entire repository)
+
+**Environment Variables** (set in Pages dashboard):
+- `NODE_VERSION`: `18` (for any future build steps)
+- Custom variables as needed for your deployment
+
+**Preview Deployments**:
+- Every push to non-main branches creates preview deployments
+- Preview URLs: `https://[commit-hash].eatinator.pages.dev`
+- Useful for testing changes before merging
 
 ### Security Setup
 
@@ -146,11 +193,17 @@ vercel --prod
 # View live logs
 npm run logs
 
+# View Pages deployment logs
+npm run logs:pages
+
 # View analytics
 wrangler analytics
 
 # Check KV storage
 wrangler kv:namespace list
+
+# Check Pages deployments
+wrangler pages deployment list --project-name eatinator
 ```
 
 ## 🛠️ Development Workflow
@@ -160,6 +213,9 @@ wrangler kv:namespace list
 ```bash
 # Start local development server
 npm run dev
+
+# Start Pages local development
+npm run pages:dev
 
 # Test scheduled functions
 npm run test

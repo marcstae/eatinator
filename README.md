@@ -24,11 +24,19 @@ wrangler auth login
 # Deploy the serverless API
 npm run deploy
 
-# Deploy frontend to any static hosting (Cloudflare Pages, Netlify, Vercel)
+# Deploy frontend to Cloudflare Pages (recommended)
+./scripts/setup-pages.sh
+
+# Or deploy to other static hosting services
+wrangler pages deploy . --project-name eatinator  # Cloudflare Pages
+netlify deploy --prod --dir=.                     # Netlify  
+vercel --prod                                      # Vercel
 ```
 
 **Benefits**: $0/month cost, automatic scaling, global CDN, 99.9% uptime
-**See**: [SERVERLESS_DEPLOYMENT.md](SERVERLESS_DEPLOYMENT.md) for detailed instructions
+**See**: 
+- [SERVERLESS_DEPLOYMENT.md](SERVERLESS_DEPLOYMENT.md) for backend deployment
+- [CLOUDFLARE_PAGES.md](CLOUDFLARE_PAGES.md) for frontend deployment
 
 ### Option 2: Docker Compose (Self-Hosted)
 
