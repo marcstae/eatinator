@@ -37,6 +37,7 @@ let currentWeek = Math.ceil(((new Date() - new Date(new Date().getFullYear(), 0,
 let currentYear = new Date().getFullYear();
 let menuData = null;
 let kioskMode = isKioskMode();
+let viewMode = 'day'; // 'day' or 'week'
 
 // UwU mode state (hidden feature)
 let uwuModeEnabled = localStorage.getItem('uwuModeEnabled') === 'true';
