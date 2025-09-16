@@ -92,7 +92,13 @@ function previousWeek() {
     }
     generateWeekDays();
     updateWeekLabel();
-    loadMenu();
+    
+    // Load appropriate menu based on current view mode
+    if (viewMode === 'week') {
+        loadWeeklyMenu();
+    } else {
+        loadMenu();
+    }
 }
 
 function nextWeek() {
@@ -106,7 +112,13 @@ function nextWeek() {
     }
     generateWeekDays();
     updateWeekLabel();
-    loadMenu();
+    
+    // Load appropriate menu based on current view mode
+    if (viewMode === 'week') {
+        loadWeeklyMenu();
+    } else {
+        loadMenu();
+    }
 }
 
 // Keyboard navigation functionality
@@ -193,4 +205,51 @@ function navigateDay(direction) {
     const dayName = dayNames[newDayIndex];
     
     selectDay(newDateStr, dayName);
+}
+
+// Toggle between day and weekly view
+function toggleViewMode() {
+    viewMode = viewMode === 'day' ? 'week' : 'day';
+    updateViewMode();
+}
+
+// Update UI based on current view mode
+function updateViewMode() {
+    const dayViewControls = document.getElementById('dayViewControls');
+    const menuContainer = document.getElementById('menuContainer');
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    const viewModeIcon = document.getElementById('viewModeIcon');
+    const bottomNav = document.querySelector('.fixed.bottom-0');
+    
+    if (viewMode === 'week') {
+        // Show weekly view
+        dayViewControls.classList.add('hidden');
+        menuContainer.classList.add('hidden');
+        weeklyContainer.classList.remove('hidden');
+        bottomNav.classList.add('hidden'); // Hide meal category selector in weekly view
+        
+        // Update icon to show day view icon
+        viewModeIcon.innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        `;
+        document.getElementById('viewModeToggle').title = 'Switch to Day View';
+        
+        loadWeeklyMenu();
+    } else {
+        // Show day view
+        dayViewControls.classList.remove('hidden');
+        menuContainer.classList.remove('hidden');
+        weeklyContainer.classList.add('hidden');
+        bottomNav.classList.remove('hidden');
+        
+        // Update icon to show weekly view icon
+        viewModeIcon.innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        `;
+        document.getElementById('viewModeToggle').title = 'Toggle Weekly Overview';
+        
+        loadMenu();
+    }
 }

@@ -47,6 +47,16 @@
                 <h1 class="text-2xl font-bold text-center text-white" onclick="handleTitleClick()">Eurest Menu</h1>
                 <p class="text-center text-ios-gray text-sm mt-1">Kaserne Timeout</p>
                 
+                <!-- View Mode Toggle Button -->
+                <button id="viewModeToggle" onclick="toggleViewMode()" 
+                        class="absolute top-4 left-4 text-ios-gray hover:text-white transition-colors duration-200"
+                        title="Toggle Weekly Overview">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="viewModeIcon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </button>
+
                 <!-- AI Settings Button (always visible for opt-in) -->
                 <button id="aiOptInBtn" onclick="showAiOptInModal()" 
                         class="absolute top-4 right-4 text-ios-gray hover:text-white transition-colors duration-200"
@@ -73,11 +83,16 @@
             </div>
         </div>
 
-        <!-- Day Selection -->
-        <div class="px-4 py-4">
+        <!-- Day Selection (Day View Only) -->
+        <div class="px-4 py-4" id="dayViewControls">
             <div class="grid grid-cols-5 gap-2" id="dayButtons">
                 <!-- Day buttons will be generated dynamically -->
             </div>
+        </div>
+
+        <!-- Weekly Overview Container -->
+        <div id="weeklyContainer" class="hidden px-4 pb-24">
+            <!-- Weekly overview will be populated here -->
         </div>
 
         <!-- Loading State -->
@@ -88,7 +103,7 @@
             </div>
         </div>
 
-        <!-- Menu Items -->
+        <!-- Menu Items (Day View Only) -->
         <div class="px-4 pb-24 space-y-3" id="menuContainer">
             <!-- Menu items will be populated here -->
         </div>

@@ -334,3 +334,62 @@ html {
     /* Ensure full height doesn't interfere with keyboard */
     max-height: calc(100vh - env(keyboard-inset-height, 0px) - 2rem);
 }
+
+/* Weekly Overview Styles */
+#weeklyContainer {
+    padding-bottom: 2rem;
+}
+
+#weeklyContainer .grid-cols-1.md\\:grid-cols-5 {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    #weeklyContainer .grid-cols-1.md\\:grid-cols-5 {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    #weeklyContainer .grid-cols-1.md\\:grid-cols-5 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Weekly day cards */
+.weekly-day-card {
+    background: rgba(58, 58, 60, 0.8);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.weekly-day-card:hover {
+    background: rgba(58, 58, 60, 1);
+    transform: translateY(-1px);
+}
+
+/* Weekly menu item cards */
+.weekly-menu-item {
+    background: rgba(44, 44, 46, 0.8);
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.weekly-menu-item .item-name {
+    font-weight: 500;
+    color: white;
+    margin-bottom: 0.25rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.weekly-menu-item .item-price {
+    color: #007AFF;
+    font-weight: 600;
+}

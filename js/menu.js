@@ -271,3 +271,265 @@ function showItemDetails(dishName, menuType) {
         // User clicked OK
     }
 }
+
+// Load weekly menu data for all days
+async function loadWeeklyMenu() {
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    const loadingState = document.getElementById('loadingState');
+    const errorState = document.getElementById('errorState');
+
+    loadingState.classList.remove('hidden');
+    weeklyContainer.innerHTML = '';
+    errorState.classList.add('hidden');
+
+    try {
+        const weekDays = getWeekDays();
+        const weeklyData = {};
+        
+        // Load menu for each day of the week
+        let hasAnyData = false;
+        for (const day of weekDays) {
+            try {
+                const apiUrl = buildApiUrl(day.date);
+                console.log(`Fetching weekly data for ${day.name}:`, apiUrl);
+
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json, text/plain, */*',
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
+                        'Referer': 'https://clients.eurest.ch/kaserne/de/Timeout'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    weeklyData[day.date] = {
+                        data: data,
+                        dayName: day.name,
+                        dayNumber: day.number
+                    };
+                    hasAnyData = true;
+                } else {
+                    console.warn(`Failed to load menu for ${day.name}: ${response.status}`);
+                    weeklyData[day.date] = {
+                        data: null,
+                        dayName: day.name,
+                        dayNumber: day.number
+                    };
+                }
+            } catch (error) {
+                console.error(`Error loading menu for ${day.name}:`, error);
+                weeklyData[day.date] = {
+                    data: null,
+                    dayName: day.name,
+                    dayNumber: day.number
+                };
+            }
+        }
+
+        // If no data was loaded successfully, show demo data instead
+        if (!hasAnyData) {
+            displayWeeklyMenuWithDemoData();
+        } else {
+            displayWeeklyMenu(weeklyData);
+        }
+
+    } catch (error) {
+        console.error('Error loading weekly menu:', error);
+        // Fall back to demo data for weekly view
+        displayWeeklyMenuWithDemoData();
+    } finally {
+        loadingState.classList.add('hidden');
+    }
+}
+
+// Get week days for current week
+function getWeekDays() {
+    const today = new Date(currentDate);
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const currentWeekStart = new Date(today);
+    
+    // Get Monday of current week
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    currentWeekStart.setDate(today.getDate() + daysToMonday);
+    
+    const weekDays = [];
+    
+    // Generate 5 days (Monday to Friday)
+    for (let i = 0; i < 5; i++) {
+        const date = new Date(currentWeekStart);
+        date.setDate(currentWeekStart.getDate() + i);
+        
+        weekDays.push({
+            date: date.toISOString().split('T')[0],
+            name: dayNames[i],
+            number: date.getDate()
+        });
+    }
+    
+    return weekDays;
+}
+
+// Display weekly menu overview
+function displayWeeklyMenu(weeklyData) {
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    
+    if (!weeklyData || Object.keys(weeklyData).length === 0) {
+        displayWeeklyMenuWithDemoData();
+        return;
+    }
+    
+    const categories = ['breakfast', 'lunch', 'dinner'];
+    let weeklyHtml = '<div class="space-y-8">';
+    
+    // For each meal category
+    categories.forEach(category => {
+        const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
+        
+        weeklyHtml += `
+            <div class="bg-ios-dark-2 rounded-xl p-4">
+                <h2 class="text-xl font-bold text-white mb-4 text-center">${categoryTitle}</h2>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        `;
+        
+        // For each day
+        Object.entries(weeklyData).forEach(([date, dayData]) => {
+            const dayItems = dayData.data && dayData.data.data 
+                ? filterByDateAndCategory(dayData.data.data, date, category)
+                : [];
+            
+            weeklyHtml += `
+                <div class="bg-ios-dark-3 rounded-lg p-3">
+                    <div class="text-center mb-3">
+                        <div class="text-ios-blue font-semibold">${dayData.dayName}</div>
+                        <div class="text-2xl font-bold text-white">${dayData.dayNumber}</div>
+                    </div>
+                    <div class="space-y-2">
+            `;
+            
+            if (dayItems.length === 0) {
+                weeklyHtml += `
+                    <div class="text-center text-ios-gray-2 text-sm py-4">
+                        No ${category}<br>available
+                    </div>
+                `;
+            } else {
+                dayItems.slice(0, 3).forEach(item => { // Limit to 3 items per day per category
+                    const price = (item.MenuPrice1 || item.price || 0).toFixed(2);
+                    weeklyHtml += `
+                        <div class="bg-ios-dark-4 rounded p-2 text-xs">
+                            <div class="font-medium text-white mb-1">${item.MenuIngredients1 || item.name || 'Menu Item'}</div>
+                            <div class="text-ios-blue font-semibold">CHF ${price}</div>
+                        </div>
+                    `;
+                });
+                
+                if (dayItems.length > 3) {
+                    weeklyHtml += `
+                        <div class="text-center text-ios-gray-2 text-xs">
+                            +${dayItems.length - 3} more
+                        </div>
+                    `;
+                }
+            }
+            
+            weeklyHtml += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        weeklyHtml += `
+                </div>
+            </div>
+        `;
+    });
+    
+    weeklyHtml += '</div>';
+    weeklyContainer.innerHTML = weeklyHtml;
+}
+
+// Display weekly menu with demo data (fallback)
+function displayWeeklyMenuWithDemoData() {
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    const weekDays = getWeekDays();
+    
+    // Demo data for weekly overview
+    const demoWeeklyData = {
+        breakfast: [
+            { name: "Bircher Müsli", price: 4.50 },
+            { name: "Croissant", price: 2.80 }
+        ],
+        lunch: [
+            { name: "Geschnetzeltes Zürcher Art", price: 14.50 },
+            { name: "Vegetarian Pasta", price: 12.90 },
+            { name: "Chicken Salad", price: 11.80 }
+        ],
+        dinner: [
+            { name: "Grilled Salmon", price: 16.80 },
+            { name: "Pizza Margherita", price: 13.50 }
+        ]
+    };
+    
+    const categories = ['breakfast', 'lunch', 'dinner'];
+    let weeklyHtml = '<div class="space-y-8">';
+    
+    categories.forEach(category => {
+        const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
+        const categoryItems = demoWeeklyData[category] || [];
+        
+        weeklyHtml += `
+            <div class="bg-ios-dark-2 rounded-xl p-4">
+                <h2 class="text-xl font-bold text-white mb-4 text-center">${categoryTitle}</h2>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        `;
+        
+        weekDays.forEach((day, dayIndex) => {
+            weeklyHtml += `
+                <div class="bg-ios-dark-3 rounded-lg p-3">
+                    <div class="text-center mb-3">
+                        <div class="text-ios-blue font-semibold">${day.name}</div>
+                        <div class="text-2xl font-bold text-white">${day.number}</div>
+                    </div>
+                    <div class="space-y-2">
+            `;
+            
+            // Rotate items for variety across days
+            const dayItems = categoryItems.length > 0 
+                ? categoryItems.slice(dayIndex % categoryItems.length, (dayIndex % categoryItems.length) + 2)
+                : [];
+            
+            if (dayItems.length === 0) {
+                weeklyHtml += `
+                    <div class="text-center text-ios-gray-2 text-sm py-4">
+                        No ${category}<br>available
+                    </div>
+                `;
+            } else {
+                dayItems.forEach(item => {
+                    weeklyHtml += `
+                        <div class="bg-ios-dark-4 rounded p-2 text-xs">
+                            <div class="font-medium text-white mb-1">${item.name}</div>
+                            <div class="text-ios-blue font-semibold">CHF ${item.price.toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            weeklyHtml += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        weeklyHtml += `
+                </div>
+            </div>
+        `;
+    });
+    
+    weeklyHtml += '</div>';
+    weeklyContainer.innerHTML = weeklyHtml;
+}
